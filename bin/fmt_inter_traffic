@@ -1,0 +1,152 @@
+#!/usr/bin/perl
+
+use haruca;
+
+my ($hostname, $host_prev, $desc, $desc_len, $int, $short_len, $stat);
+my ($bps_in, $pps_in, $bps_out , $pps_out, $error_in, $error_out, $crc, $col, $drop_in, $drop_out);
+my @ints;
+
+my ($total_bps_in,$total_bps_out,$total_pps_in,$total_pps_out);
+
+$desc_len = 22;
+
+while(<STDIN>){
+  if($_ =~ /$main::delim/){next;}
+  if($_ =~ /..*>sh..*int..*/){
+    $hostname = (split(/>/,$_))[0];
+    print "$hostname\n";
+    next;
+  }
+
+
+  if($_ =~ /line protocol is/){
+    $int = (split(/\ /,$_))[0];
+    
+    $int =~ s/Ethernet/E/g;
+    $int =~ s/Fast/F/g;
+    $int =~ s/TenGigabit/T/g;
+    $int =~ s/Gigabit/G/g;
+    $int =~ s/Serial/Se/g;
+    $int =~ s/Port-channel/Po/g;
+    $int =~ s/Loopback/LB/g;
+
+    $int .= $main::delim.$hostname;
+    push(@ints,$int);
+    if($_ =~ /administ/){
+      $$int{stat} = " ";
+    }else{
+      $$int{stat} = "*";
+    }
+  }
+
+  if($_ =~ /Description:/){
+    $$int{desc} = $_;
+    $$int{desc} =~ s/..*Description: //g;
+    chomp($$int{desc});
+    $$int{desc} = substr($$int{desc},0,$desc_len);
+    $short_len = $desc_len - length($$int{desc});
+    $$int{desc} = $$int{desc} . "_" x $short_len;
+  }
+
+  if($_ =~ /input errors/){
+    $$int{error_in}  = (split(/input errors/,$_))[0];
+    $$int{error_in}  =~ s/\ //g;
+  }
+
+  if($_ =~ /output errors/){
+    $$int{error_out} = (split(/output errors/,$_))[0];
+    $$int{error_out} =~ s/\ //g;
+  }
+
+  if($_ =~ /CRC/){
+    $$int{crc} = (split(/CRC/,$_))[0];
+    $$int{crc} =~ s/..*,//g;
+    $$int{crc} =~ s/\ //g;
+  }
+
+  if($_ =~ /collisions/){
+    $$int{col} = (split(/collisions/,$_))[0];
+    $$int{col} =~ s/..*,//g;
+    $$int{col} =~ s/\ //g;
+  }
+
+  if($_ =~ /Input queue/){
+    $$int{drop_in}  = (split(/\//,$_))[2];
+    $$int{drop_out} = (split(/\ /,$_))[-1];
+    chomp($$int{drop_out});
+  }
+
+  if($_ =~ /5 minute input rate/){
+    $$int{bps_in} = (split(/ bits\/sec/,$_))[0];
+    $$int{bps_in} =~ s/..*input rate //g;
+    $$int{pps_in} = (split(/ packets\/sec/,$_))[0];
+    $$int{pps_in} =~ s/..*, //g;
+
+    $total_bps_in += $$int{bps_in};
+    $total_pps_in += $$int{pps_in};
+
+  }
+
+  # Catalyst スイッチのうち、outputがouxtputになってるのがあるよ。。。
+  # なんだこのバグは
+  if($_ =~ /5 minute oux*tput rate/){
+    $$int{bps_out} = (split(/ bits\/sec/,$_))[0];
+    $$int{bps_out} =~ s/..*oux*tput rate //g;
+    $$int{pps_out} = (split(/ packets\/sec/,$_))[0];
+    $$int{pps_out} =~ s/..*, //g;
+
+    $total_bps_out += $$int{bps_out};
+    $total_pps_out += $$int{pps_out};
+  }
+
+
+
+
+}
+
+printf("%-2s %-12s %-${desc_len}s %14s %12s %14s %12s %12s %12s %12s %12s %12s\n","*s","INT","DESCRIPTION","IN(bps)","IN(pps)","OUT(bps)","OUT(pps)","error_in","error_out","drop_in","drop_out","crc","col");
+foreach $int (@ints){
+  $hostname = (split(/$main::delim/,$int))[1];
+
+  if($host_prev ne $hostname){
+    $host_prev = $hostname;
+    print "*-----$hostname-----\n";
+  }
+  $desc    = $$int{desc};
+  $stat    = $$int{stat};
+  $bps_in  = $$int{bps_in};
+  $pps_in  = $$int{pps_in};
+  $bps_out  = $$int{bps_out};
+  $pps_out  = $$int{pps_out};
+
+  $error_in  = $$int{error_in};
+  $error_out = $$int{error_out};
+  $crc       = $$int{crc};
+  $col       = $$int{col};
+  $drop_in   = $$int{drop_in};
+  $drop_out  = $$int{drop_out};
+
+  while($bps_in  =~ s/(.*\d)(\d\d\d)/$1,$2/){} ;
+  while($bps_out =~ s/(.*\d)(\d\d\d)/$1,$2/){} ;
+
+  $desc =~ s/\ /_/g;
+
+  $int = (split(/$main::delim/,$int))[0];
+  printf("%-2s %-12s %-${desc_len}s %14s %12d %14s %12d %12d %12d %12d %12d %12d\n",$stat,$int,$desc,$bps_in,$pps_in,$bps_out,$pps_out,$error_in,$error_out,$drop_in,$drop_out,$crc,$col);
+  next;
+
+  print "$int\n";
+  print "  ERROR : In/Out  : $error_in / $error_out\n";
+  print "  DROP  : In/Out  : $drop_in / $drop_out\n";
+  print "        : CRC/Col : $crc / $col\n";
+
+
+}
+
+while($total_bps_in  =~ s/(.*\d)(\d\d\d)/$1,$2/){} ;
+while($total_bps_out =~ s/(.*\d)(\d\d\d)/$1,$2/){} ;
+print " "x($desc_len+17);
+printf("%14s %12d %14s %12d\n ",$total_bps_in,$total_pps_in,$total_bps_out,$total_pps_out);
+
+exit;
+

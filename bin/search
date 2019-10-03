@@ -1,0 +1,217 @@
+#!/usr/bin/perl
+
+use haruca;
+use DBI;
+use strict;
+
+my $opt = "";
+my $pos = "0";
+my $str = "";
+my ($prt_name, $prt_host, $prt_iplb, $prt_type, $prt_loca, $prt_ios, $prt_code, $buf, $sth);
+my ( $host_max, $iplb_max, $type_max, $name_max, $loca_max, $ios_max, $code_max, $offset);
+my ($tmp, $disabled,$sql, $hostcode, $ipaddress, $hostname, $officename, $officeaddress, $check, $type, $model, $ios, $serial);
+my (@hostcodes, @ip, @array, @hostnames, @addresses, @types, @officenames, @locales, @ioses, @serials, @ipaddresses, @tmps);
+
+
+#半角なんこぶん空けるか？
+$offset = 2;
+
+if(($ARGV[0] eq "")||($ARGV[1] eq "--help")||($ARGV[0] eq "--help")){
+  prt_error();
+  exit;
+}
+
+my $dbh = haruca::connect_db();
+haruca::get_args();
+
+
+my $category;
+my $categoryname;
+my $categorycode;
+my $sql_cat;
+
+my $category_condition = "";
+
+$sql  = "select host.disabled,host.description,host.hostname,plugin_haruca_host.model,plugin_haruca_office.officename, ";
+$sql .= " plugin_haruca_office.officeaddress,plugin_haruca_host.version,";
+$sql .= " plugin_haruca_host.id,plugin_haruca_host.serial from plugin_haruca_host ";
+$sql .= " inner join host                 on plugin_haruca_host.id = host.id ";
+$sql .= " left join plugin_haruca_office on plugin_haruca_host.officecode = plugin_haruca_office.officecode ";
+
+
+if(grep(/category/,@main::opts)){
+  $sql_cat  = "select host.description,host.hostname,plugin_haruca_host.model,plugin_haruca_office.officename, ";
+  $sql_cat .= " plugin_haruca_office.officeaddress,plugin_haruca_host.version,";
+  $sql_cat .= " plugin_haruca_host.id,plugin_haruca_host.serial from plugin_haruca_host ";
+
+  $category = (split(/=/,$main::opts[0]))[1];
+
+  foreach(@main::opts){
+    $tmp = (split(/=/,$_))[1];
+    if($tmp){
+     $category = $tmp;
+     last;
+    }
+  }
+
+
+
+  if($category eq ""){
+    prt_error();
+    $sql_cat = "select categorycode,categoryname from plugin_haruca_category order by categorycode";
+    $sth = $dbh->prepare($sql_cat);
+    $sth->execute;
+    $sth->bind_columns(undef,\($categorycode,$categoryname));
+    print "\n --category : [ ";
+    while($sth->fetch){
+      print "$categoryname ";
+    }
+    print "]\n";
+    $sth->finish;
+    $dbh->disconnect;
+    exit;
+  }else{
+    $sql .= " inner join plugin_haruca_category on plugin_haruca_host.categorycode = plugin_haruca_category.categorycode ";
+    if($category =~ /^\d+$/){
+      $category_condition = "plugin_haruca_category.categorycode = $category";
+    }else{
+      $category=$dbh->quote($category);
+      $category_condition = "plugin_haruca_category.categoryname = $category";
+    }
+  }
+}
+
+
+if($category_condition ne ""){
+  $sql .= " where $category_condition";
+}
+
+
+$sth = $dbh->prepare($sql);
+$sth->execute;
+$sth->bind_columns(undef,\($disabled,$hostname,$ipaddress,$model,$officename,$officeaddress,$ios,$hostcode,$serial));
+
+while ($sth->fetch) {
+
+  $check = "$hostname,$ipaddress,$model,$officename,$officeaddress,$ios,$hostcode,$serial";
+  $check = "$hostname,$ipaddress,$model,$officename,$officeaddress,$ios,$hostcode";
+
+  if($check !~ /$main::args[0]/){next;}
+  if($disabled eq "on"){next;}
+
+  if($ipaddress =~ /(\d+)\.(\d+)\.(\d+)\.(\d+)/){
+    @ip = split(/(\d+)\.(\d+)\.(\d+)\.(\d+)/,$ipaddress);
+    $ipaddress = sprintf("%03d.%03d.%03d.%03d",$ip[1],$ip[2],$ip[3],$ip[4]);
+  }
+
+  push(@hostnames,$hostname);
+  push(@addresses,$ipaddress);
+  push(@types,$model);
+  push(@officenames,$officename);
+  push(@locales,$officeaddress);
+  push(@ioses,$ios);
+  push(@hostcodes,$hostcode);
+  push(@serials,$serial);
+  $buf  = $hostname       . $main::delim;
+  $buf .= $ipaddress      . $main::delim;
+  $buf .= $model          . $main::delim;
+  $buf .= $ios            . $main::delim;
+  $buf .= $officename     . $main::delim;
+  $buf .= $officeaddress  . $main::delim;
+  $buf .= $hostcode       . $main::delim;
+  $buf .= $serial         . $main::delim;
+  push(@tmps,$buf);
+}
+
+$host_max = haruca::get_max_len(@hostnames);
+$iplb_max = haruca::get_max_len(@addresses);
+$type_max = haruca::get_max_len(@types);
+$name_max = haruca::get_max_len(@officenames);
+$loca_max = haruca::get_max_len(@locales);
+$ios_max  = haruca::get_max_len(@ioses);
+$code_max = haruca::get_max_len(@hostcodes);
+
+@array = sort { (split(/$main::delim/,$a))[$main::pos] cmp (split(/$main::delim/,$b))[$main::pos]} @tmps;
+
+my $flg_shortopt;
+if(( grep(/category/,@main::opts) && ($#main::opts == 0)) || ( !grep(/category/,@main::opts) && ($#main::opts == -1))){
+  $flg_shortopt = 0;
+}else{
+  $flg_shortopt = 1;
+}
+foreach(@main::opts){
+  if($_ =~ /category=/){$_=""; }
+}
+
+foreach(@array){
+  $prt_name = "";
+  $prt_host = "";
+  $prt_iplb = "";
+  $prt_type = "";
+  $prt_loca = "";
+  $prt_ios  = "";
+  $prt_code = "";
+  if( $flg_shortopt==0 || (($flg_shortopt==1)&&(grep(/h/,@main::opts)))){
+    $prt_host = haruca::len_form((split(/$main::delim/,$_))[0],($host_max+$offset),"right");
+  }
+  if( $flg_shortopt==0 || (($flg_shortopt==1)&&(grep(/i/,@main::opts)))){
+    $buf = (split(/$main::delim/,$_))[1];
+
+    if($buf =~ /(\d+)\.(\d+)\.(\d+)\.(\d+)/){
+      @ip = split(/\./,$buf);
+      $buf = sprintf("%d.%d.%d.%d",$ip[0],$ip[1],$ip[2],$ip[3]);
+    }
+
+    $prt_iplb = haruca::len_form($buf,($iplb_max+$offset),"right");
+  }
+  if( $flg_shortopt==0 || (($flg_shortopt==1)&&(grep(/t/,@main::opts)))){
+    $prt_type = haruca::len_form((split(/$main::delim/,$_))[2],($type_max+$offset),"right");
+  }
+  if( $flg_shortopt==0 || (($flg_shortopt==1)&&(grep(/v/,@main::opts)))){
+    $prt_ios  = haruca::len_form((split(/$main::delim/,$_))[3],($ios_max+$offset),"right");
+  }
+  if( $flg_shortopt==0 || (($flg_shortopt==1)&&(grep(/n/,@main::opts)))){
+    $prt_name = haruca::len_form((split(/$main::delim/,$_))[4],($name_max+$offset),"right");
+  }
+  if( $flg_shortopt==0 || (($flg_shortopt==1)&&(grep(/l/,@main::opts)))){
+    $prt_loca = haruca::len_form((split(/$main::delim/,$_))[5],($loca_max+$offset),"right");
+  }
+  if( $flg_shortopt==0 || (($flg_shortopt==1)&&(grep(/c/,@main::opts)))){
+    $prt_code = haruca::len_form((split(/$main::delim/,$_))[6],($code_max+$offset),"left");
+  }
+  if(grep(/s/,@main::opts)){
+    $prt_code .= haruca::len_form((split(/$main::delim/,$_))[7],14,"left");
+  }
+
+  if($prt_host =~ /^\ +$/){ $prt_host =~ s/^\ /-/; }
+  if($prt_iplb =~ /^\ +$/){ $prt_iplb =~ s/^\ /-/; }
+  if($prt_type =~ /^\ +$/){ $prt_type =~ s/^\ /-/; }
+  if($prt_name =~ /^\ +$/){ $prt_name =~ s/^\ /-/; }
+  if($prt_loca =~ /^\ +$/){ $prt_loca =~ s/^\ /-/; }
+  if($prt_ios  =~ /^\ +$/){ $prt_ios  =~ s/^\ /-/; }
+  if($prt_code =~ /^\ +$/){ $prt_code =~ s/^\ /-/; }
+
+  print encode('utf-8',$prt_host).  $prt_iplb.  $prt_type.  $prt_ios.  $prt_name.  $prt_loca.  $prt_code;
+  #print $prt_host.  $prt_iplb.  $prt_type.  $prt_name.  $prt_loca.  $prt_ios. $prt_code;
+  print  "\n";
+}
+$sth->finish;
+$dbh->disconnect;
+exit;
+
+sub prt_error{
+
+  print "usage : search keyword [-hitnl] [+POS sort-position]\n";
+  print " -h : hostname\n";
+  print " -i : ip address (loopback)\n";
+  print " -t : type\n";
+  print " -v : iosvers\n";
+  print " -n : office name\n";
+  print " -l : office location\n";
+  print " -c : hostcode\n";
+  print " -s : serial\n";
+  print " -category=[CATEGORY]\n";
+  print "\n";
+  print " --help : print this page\n";
+
+}

@@ -1,0 +1,479 @@
+#!/usr/bin/perl
+
+use haruca;
+use strict;
+use Net::SSH::Expect;
+use Net::Telnet;
+use DBI;
+
+
+my (@hosts, @cmds, @results);
+my ($id,$cmd, $num, $fname, $one, $dbh, $sql, $hostname, $address, $chk_file_arg, $result, $filename, $alert_stdin, $sth,$disabled);
+
+# ファイル名の読み込み
+if($#ARGV == -1){
+  print "usage : $0 [ OPTION ] [ hostname | address ] [ command | COMMAND LIST ] \n";
+  print "usage : $0 [ OPTION ] [ command | COMMAND LIST ] < HOST LIST\n";
+  print " OPTION : - or --stdin  read host list from standard input\n";
+  print "        : --config      change config\n";
+  print "        : --nolog       not shown into standard output\n";
+  exit;
+}
+
+# CMDLIST
+# ------------
+# show log
+# show clock
+# show route
+# ------------
+#
+# HOSTLIST
+# ------------
+# HOST01
+# HOST02
+# HOST03
+# ------------
+
+# router ESmaster01 sh clock
+# router ESmaster01 sh clock , sh flash
+# router ESmaster01 --config conf t , logging 192.168.0.201 , end , copy run start
+#
+# router --stdin sh clock < HOSTLIST
+# router --stdin sh clock , sh flash < HOSTLIST
+# router --stdin --config conf t , no logging 192.168.0.201 , end , copy run start   < HOSTLIST
+#
+# コマンドリストのファイル名はパス付きで
+# router ESyositu01 ./CMDLIST
+# router --config ESyositu01 ./CMDLIST_CONFIG_201
+# router --config --stdin    ./CMDLIST_CONFIG_201 < HOSTLIST
+
+$filename = haruca::get_args();
+$dbh = haruca::connect_db();
+
+if(!grep(/stdin/,@main::opts)){
+  $sql  = "select description,host.id from host inner join plugin_haruca_host on host.id = plugin_haruca_host.id ";
+  $sql .= " where host.description = '".@main::args[0]."' and host.disabled != 'on'";
+
+  $sth = $dbh->prepare($sql);
+  $sth->execute;
+  $sth->bind_columns(undef,\($hostname,$id));
+  if(!$sth->fetch){
+    #単一ホストの場合はホスト名の入力ミスと考えられる
+    print "HOSTNAME : ".@main::args[0]." was not found in database.\n";
+    print "If you want list from STDIN , when you requires option \"-\" or \"--stdin\"\n";
+    $sth->finish;
+    $dbh->disconnect;
+    exit;
+  }
+  $sth->finish;
+
+}
+
+
+if($#main::stdin != -1){
+
+  #標準入力の文字列はホスト一覧になる
+  foreach(@main::stdin){
+    $one = (split(/\ \ */,((split(/\n/,$_))[0])))[0];
+
+    $sql  = "select description from host inner join plugin_haruca_host on host.id = plugin_haruca_host.id ";
+    $sql .= " where host.description = '$one' or host.hostname = '$one'";
+
+    $sth = $dbh->prepare($sql);
+    $sth->execute;
+    $sth->bind_columns(undef,\($hostname));
+
+    if($sth->fetch){
+      push(@hosts,$hostname);
+    }
+  }
+
+
+  #コマンドリスト整形
+  if($filename ne ""){
+    # ファイル名があれば、そのファイルがコマンドリスト
+    open(FILE,"$filename");
+    @cmds = <FILE>;
+    close(FILE);
+
+    # ファイルを整形し、行頭が # で始まるもの以外のみ追加
+    foreach(@cmds){
+      if($_ =~ /^#/){next;}
+      $_ =~ s/\r\n/,/g;
+      $_ =~ s/\n/,/g;
+      $cmd = $cmd . $_;
+    }
+  }elsif(@main::args ne ""){
+    # ファイル名がなければ引数がコマンドリスト
+    foreach(@main::args){
+      $cmd .= $_ . " ";
+    }
+  }else{
+    print "BAD ARG\n";
+    exit;
+  }
+
+}else{
+  $one = shift(@main::args);
+  $sql  = "select description from host inner join plugin_haruca_host on host.id = plugin_haruca_host.id ";
+  $sql .= " where host.description = '$one' or host.hostname = '$one'";
+
+  $sth = $dbh->prepare($sql);
+  $sth->execute;
+  $sth->bind_columns(undef,\($hostname));
+
+  if($sth->fetch){
+    push(@hosts,$hostname);
+  }else{
+    print "BAD ARG\n";
+    exit;
+  }
+
+  #コマンドリストは引数が優先
+  #引数がなく、ファイル名が渡された場合のみファイルを参照
+  if($#main::args == -1){
+    if($filename ne ""){
+      #ファイルがあればファイル入力
+      open(FILE,"$filename");
+      @cmds = <FILE>;
+      close(FILE);
+
+      # ファイルを整形し、行頭が # で始まるもの以外のみ追加
+      foreach(@cmds){
+        if($_ =~ /^#/){next;}
+        $_ =~ s/\r\n/,/g;
+        $_ =~ s/\n/,/g;
+        $cmd = $cmd . $_;
+      }
+    }else{
+      #ファイルがなければエラー
+      print "input command list of file\n";
+      $sth->finish;
+      $dbh->disconnect;
+      exit;
+    }
+  }else{
+    foreach(@main::args){
+      $cmd .= $_ . " ";
+    }
+  }
+}
+
+$sth->finish;
+$dbh->disconnect;
+
+# コマンドリストは
+#  sh ではじまるもの
+#  ping ではじまるもの
+#  traceroute ではじまるもの
+#  copy run start ではじまるもの
+# のみを対象とする。
+
+@cmds = split(/,/,$cmd);
+$cmd = "";
+foreach(@cmds){
+  $_ =~ s/^\ \ *//g;
+  if(grep(/config/,@main::opts)){
+    $cmd .= $_ . ", ";
+  }elsif(
+    ($_ =~ /^sh/)||
+    ($_ =~ /^ping/)||
+    ($_ =~ /^traceroute/)||
+    ($_ =~ /^clear coun/)||
+    ($_ =~ /^clear cry/)||
+    ($_ =~ /^get /)||
+    ($_ =~ /^exe /)||
+    ($_ =~ /^disp/)||
+    ($_ =~ /^copy\ .*/)
+   ){
+    $cmd .= $_ . ", ";
+  }
+}
+$cmd =~ s/,\ $//;
+
+
+# メインルーチン
+if(!$#hosts){
+  if(haruca::pingcheck($hostname)){
+    if(grep(/config/,@main::opts)){
+        $result = cmd($hostname,$cmd);
+        print "$hostname : config change successful.\n";
+    }else{
+      if(grep(/nolog/,@main::opts)){
+        print "$hostname : executing...\n";
+      }
+      $result = cmd($hostname,$cmd);
+      if(!grep(/nolog/,@main::opts)){
+        print $result;
+      }
+    }
+
+  }else{
+    print "$hostname : $main::ping_fail_str skip...\n";
+  }
+}else{
+  foreach $hostname (@hosts){
+
+    if(haruca::pingcheck($hostname)){
+      print "$hostname : executing...\n";
+      $result = cmd($hostname,$cmd);
+
+      if(grep(/config/,@main::opts)){
+        print "$hostname : config change successful ...\n";
+      }elsif(!grep(/nolog/,@main::opts)){
+
+        # 取得日時を付加したファイル名をつける
+        $fname = $hostname . "-" . haruca::get_localtime() . ".log";
+
+        open(FILE,"> $fname");
+        print FILE $result;
+        close(FILE);
+      }
+
+    }else{
+      print "$hostname : $main::ping_fail_str skip...\n";
+    }
+
+
+  }
+}
+
+exit;
+
+
+sub cmd{
+
+  my $host  = $_[0];
+  my $cmd   = $_[1];
+
+  my $buf;
+  my $line;
+  my $adrs;
+
+  my $dbh = haruca::connect_db();
+  my $sth;
+  my $sql;
+  my $hostname = $dbh->quote($host);
+
+  my $uid_prompt;
+  my $pwd_prompt;
+  my $en_prompt;
+  my $prepare_cmd;
+  my $enable_cmd;
+  my $username;
+  my $vtypass;
+  my $enable;
+  my $prompt;
+  my $line_tmp;
+  my $host_substr;
+  my $categoryname;
+  my $login_method;
+
+
+  $sql  = "select categoryname,hostname,login_method,uid_prompt,pwd_prompt,en_prompt,prepare_cmd,enable_cmd,username,vtypass,enable from plugin_haruca_host ";
+  $sql .= " inner join plugin_haruca_category on plugin_haruca_host.categorycode = plugin_haruca_category.categorycode ";
+  $sql .= " inner join host on plugin_haruca_host.id = host.id where host.description = $hostname";
+
+  $sth = $dbh->prepare($sql);
+  $sth->execute;
+  $sth->bind_columns(undef,\($categoryname,$adrs,$login_method,$uid_prompt,$pwd_prompt,$en_prompt,$prepare_cmd,$enable_cmd,$username,$vtypass,$enable));
+  $sth->fetch;
+  $sth->finish;
+  $dbh->disconnect;
+
+  if($vtypass eq ""){
+    return $main::no_host_info_str."\n";
+  }
+
+  $host_substr = substr($host,0,16);
+  $prompt = ".*${host_substr}.*[>#].*\$";
+
+
+  if($login_method =~ /ssh/i){
+    $buf = cmd_ssh($prompt,$cmd,$adrs,$uid_prompt,$pwd_prompt,$en_prompt,$prepare_cmd,$enable_cmd,$username,$vtypass,$enable,$host);
+  }else{
+    $buf = cmd_telnet($prompt,$cmd,$adrs,$uid_prompt,$pwd_prompt,$en_prompt,$prepare_cmd,$enable_cmd,$username,$vtypass,$enable,$host);
+  }
+
+  return $buf;
+
+}
+
+sub cmd_ssh{
+
+  my $prompt      = $_[0];
+  my $cmd         = $_[1];
+  my $adrs        = $_[2];
+  my $uid_prompt  = $_[3];
+  my $pwd_prompt  = $_[4];
+  my $en_prompt   = $_[5];
+  my $prepare_cmd = $_[6];
+  my $enable_cmd  = $_[7];
+  my $username    = $_[8];
+  my $vtypass     = $_[9];
+  my $enable      = $_[10];
+  my $host        = $_[11];
+  my $buf;
+  my $line;
+  my $line_tmp;
+  my $login_output;
+  my $timeout = 30;
+  my $buf_tmp = "";
+  my @cmds = split(/,/,$cmd);
+  my $ret;
+
+  my $ssh = Net::SSH::Expect->new (
+      host => $adrs,
+      user => $username,
+      password=> $vtypass,
+      raw_pty => 1,
+      no_terminal => 0,
+      ssh_option => '-o StrictHostKeyChecking=no'
+   );
+
+
+  $login_output = $ssh->run_ssh();
+  $ssh->waitfor($pwd_prompt, $timeout) or die "ssh error";
+  $ssh->send($vtypass);
+  $ssh->waitfor("$prompt|\]\\?+\ +\$", $timeout) or die "ssh error";
+   
+  # 特権モード移行コマンドがある場合の処理
+  if($enable_cmd){
+    $ssh->send($enable_cmd);
+    $ssh->waitfor($en_prompt, $timeout) or die "ssh error";
+    $ssh->send($enable);
+    $ssh->waitfor("$prompt|\]\\?+\ +\$", $timeout) or die "ssh error";
+  }
+
+
+  # コマンド入力まえの事前設定などがある場合の処理
+  if($prepare_cmd){
+    $ssh->send($prepare_cmd);
+    $ssh->waitfor("$prompt|\]\\?+\ +\$", $timeout) or die "ssh error";
+  }
+
+  $buf = "";
+
+  foreach(@cmds){
+    $_ =~ s/^\ +//g;
+    $_ =~ s/\ +$//g;
+
+    $ssh->send($_);
+    $buf_tmp = $ssh->read_all(2);
+    #$ssh->waitfor("$prompt|\]\\?+\ +\$", $timeout) or die "ssh error";
+    #$buf_tmp = $ssh->before();
+
+    if($ssh->match() =~ /]\?+\ +$/){
+    #if($buf_tmp =~ /]\?+\ +$/){
+      $ssh->send("\n");
+      $buf_tmp .= $ssh->match();
+      $ssh->waitfor("$prompt|\]\\?+\ +\$", $timeout) or die "ssh error";
+      $ssh->waitfor("$prompt|\]\\?+\ +\$", $timeout) or die "ssh error";
+      $buf_tmp .= $ssh->before();
+    }
+
+    $buf_tmp =~ s/\r\n/\n/g;
+
+    $buf .= $main::delim_line ;
+    $buf .= $_ ."\n";
+    $buf .= $main::delim_line ;
+    $buf .= $host."#" . $buf_tmp ."\n";
+
+  }
+
+
+  $ssh->close();
+
+  return $buf;
+
+}
+
+sub cmd_telnet{
+
+  my $prompt      = $_[0];
+  my $cmd         = $_[1];
+  my $adrs        = $_[2];
+  my $uid_prompt  = $_[3];
+  my $pwd_prompt  = $_[4];
+  my $en_prompt   = $_[5];
+  my $prepare_cmd = $_[6];
+  my $enable_cmd  = $_[7];
+  my $username    = $_[8];
+  my $vtypass     = $_[9];
+  my $enable      = $_[10];
+  my $host        = $_[11];
+  my $buf;
+  my $line;
+  my $line_tmp;
+  my $timeout = 300;
+  my @cmds = split(/,/,$cmd);
+
+  my $t = new Net::Telnet (Timeout=>$timeout , host => "$adrs");
+
+  # ユーザ名入力ダイアログがある場合の処理
+  if($uid_prompt){
+    $t->waitfor("/$uid_prompt/i");
+    $t->print($username);
+  }
+
+  # パスワード入力ダイアログがある場合の処理
+  if($pwd_prompt){
+    $t->waitfor("/$pwd_prompt/i");
+    $t->print($vtypass);
+  }
+
+  # とりあえずログインできたはず
+  $t->waitfor(-match=>"/$prompt/i",-timeout=>10);
+
+  # 特権モード移行コマンドがある場合の処理
+  if($enable_cmd){
+    $t->print($enable_cmd);
+    $t->waitfor("/$en_prompt/i");
+    $t->print($enable);
+    $t->waitfor("/$prompt/i");
+  }
+
+  # コマンド入力まえの事前設定などがある場合の処理
+  if($prepare_cmd){
+    $t->print($prepare_cmd);
+    $t->waitfor("/$prompt/i");
+  }
+
+  $t->max_buffer_length('4194304');
+  #$t->max_buffer_length('2097152');
+
+
+  $buf = "";
+  foreach(@cmds){
+    $_ =~ s/^\ +//g;
+    $_ =~ s/\ +$//g;
+
+    $t->print("$_");
+    ($line) = $t->waitfor("/$prompt|\]\\?+\ +\$/i");
+    if($line !~ /\n$/){
+      $t->print("\n");
+      $line .=  "]\?";
+      ($line_tmp) = $t->waitfor("/$prompt|\]\\?+\ +\$/i");
+
+      if($line_tmp !~ /\n$/){
+        $t->print("\n");
+        $line_tmp .=  "]\?";
+        $line .= $line_tmp;
+        ($line_tmp) = $t->waitfor("/$prompt|\]\\?+\ +\$/i");
+      }
+      $line .= $line_tmp;
+    }
+
+    $buf .= $main::delim_line ;
+    $buf .= $_ . "\n";
+    $buf .= $main::delim_line ;
+    $buf .= $host . "#" . $line . "\n";
+
+  }
+
+  $t->close;
+
+  return $buf;
+
+}
+

@@ -1,0 +1,94 @@
+#!/usr/bin/perl
+
+use haruca;
+use strict;
+
+haruca::prt_logdate("SYS_StatSummary START");
+ 
+
+my ($hostname,$result,$today,$dir,$date,$fname,$buf,$cpu_1min,$cpu_5min,$cpu_5sec);
+my ($mem_free,$mem_used,$mem_total,$mem_usage,$cmd,$tmp,$cnt);
+my %cpu;
+my @ar;
+
+$dir = $0;
+$dir =~ s/sys_//g;
+system("rm -f $dir/*");
+
+$today = `date \'+%Y-%m-%d\'`;
+chomp($today);
+
+$cmd = "${main::binpath}search . | ${main::binpath}list_snmpinfo ";
+
+$result = `$cmd --cpu `;
+$buf = sprintf("%-20s %5s %5s\n","HOSTNAME","5min","1min");
+$buf .= "-" x 36 ."\n";
+
+@ar = sort({(split "<<>>", $b)[3] <=> (split "<<>>", $a)[3]} split(/\n/,$result));
+
+$cnt=0;
+foreach(@ar){
+  if($cnt++ >= 10){last;}
+  $hostname = (split(/<<>>/,$_))[0];
+  $cpu_5sec = (split(/<<>>/,$_))[1];
+  $cpu_1min = (split(/<<>>/,$_))[2];
+  $cpu_5min = (split(/<<>>/,$_))[3];
+  $cpu{$hostname}{'5min'} = $cpu_5min;
+  $cpu{$hostname}{'1min'} = $cpu_1min;
+  $buf .= sprintf("%-20s %5d %5d\n",$hostname,$cpu_5min,$cpu_1min);
+}
+$fname = "CPU利用率-".haruca::get_localtime();
+open(FILE,"> $dir/$fname");
+print FILE $buf;
+close(FILE);
+
+undef(@ar);
+$buf = "";
+$result = `$cmd --memory `;
+foreach(split(/\n/,$result)){
+  $hostname = (split(/<<>>/,$_))[0];
+  $mem_used = (split(/<<>>/,$_))[1];
+  $mem_free = (split(/<<>>/,$_))[2];
+
+  if($mem_used eq "" || $mem_free eq ""){
+    $mem_used = 0;
+    $mem_free = 0;
+    $mem_total = 0;
+    $mem_usage = 0;
+  }else{
+    $mem_used = $mem_used / 1000 / 1000;
+    $mem_free = $mem_free / 1000 / 1000;
+    $mem_total = $mem_free+$mem_used;
+    $mem_usage = $mem_used / $mem_total * 100;
+  }
+
+
+  $buf .= sprintf("%s<<>>%.1f<<>>%3.1f<<>>%-3.1f\n",$hostname,$mem_usage,$mem_used,$mem_total);
+}
+
+
+@ar = sort({(split "<<>>", $b)[1] <=> (split "<<>>", $a)[1]} split(/\n/,$buf));
+
+$buf = "HOSTNAME         利用率(%)    used(MB)  all(MB)\n";
+$buf .= "-" x 50 ."\n";
+$cnt=0;
+foreach(@ar){
+  if($cnt++ >= 10){last;}
+  $hostname = (split(/<<>>/,$_))[0];
+  $mem_usage = (split(/<<>>/,$_))[1];
+  $mem_used = (split(/<<>>/,$_))[2];
+  $mem_total = (split(/<<>>/,$_))[3];
+  $buf .= sprintf("%-20s %.1f       %3.1f      %-3.1f\n",$hostname,$mem_usage,$mem_used,$mem_total);
+}
+
+
+
+$fname = "Memory利用率-".haruca::get_localtime();
+open(FILE,"> $dir/$fname");
+print FILE $buf;
+close(FILE);
+
+haruca::prt_logdate("SYS_StatSummary END");
+
+exit;
+

@@ -1,0 +1,33 @@
+#!/usr/bin/perl
+
+use haruca;
+use strict;
+
+haruca::prt_logdate("SYS_GET_LOG_FAIL START");
+ 
+
+my ($hostname,$result,$today,$dir,$date);
+
+$dir = $0;
+$dir =~ s/sys_//g;
+system("rm -f $dir/*");
+
+$today = `date \'+%Y-%m-%d\'`;
+chomp($today);
+
+$result = `grep GET_LOG_FAIL ${main::logpath} | egrep -v '(START|END)' | grep $today`;
+
+foreach(split(/\n/,$result)){
+  $hostname = (split(/\ /,$_))[-1];
+
+  $date = haruca::get_localtime();
+  open(FILE,"> $dir/${hostname}-$date");
+  print FILE $_;
+  close(FILE);
+
+
+}
+haruca::prt_logdate("SYS_GET_LOG_FAIL END");
+
+exit;
+

@@ -1,0 +1,484 @@
+#!/usr/bin/perl
+
+use haruca;
+
+if( $ARGV[0] eq "" ){
+  print "usage : portlist router-name [csv|line]\n";
+  exit;
+}
+
+if(($ARGV[1] eq "csv")||($ARGV[2] eq "csv")){
+  $flg_csv = "csv";
+}elsif(($ARGV[1] eq "line")||($ARGV[2] eq "line")){
+  $flg_csv = "line";
+}
+
+if($ARGV[1] =~ /^\d{1,}$/){
+  $descr_max = $ARGV[1];
+}elsif($ARGV[2] =~ /^\d{1,}$/){
+  $descr_max = $ARGV[2];
+}else{
+  $descr_max = "";
+}
+
+$flg_ip_short = 1;
+
+
+$host = $ARGV[0];
+
+##########################################
+# Status Definition
+##########################################
+  my $s_ad = "-";
+  my $s_dn = "x";
+  my $s_up = "o";
+  my $s_na = "?";
+
+##########################################
+# Print Item Definition
+##########################################
+push(@items,"if");
+push(@items,"dscr");
+push(@items,"L1");
+push(@items,"L2");
+push(@items,"st_status");
+push(@items,"st_vlan");
+push(@items,"adrs");
+push(@items,"mask_bin");
+push(@items,"hsrp_group");
+push(@items,"hsrp_pri");
+push(@items,"hsrp_ip");
+push(@items,"acl_in");
+push(@items,"acl_out");
+push(@items,"ospf_cost");
+push(@items,"ospf_pri");
+push(@items,"mode_dp");
+push(@items,"mode_sp");
+push(@items,"st_dp");
+push(@items,"st_sp");
+push(@items,"mode_bw");
+push(@items,"st_type");
+
+
+##########################################
+# show interface status
+##########################################
+$buf = `${main::binpath}router $host show interface status , show interfaces `;
+
+@results = split(/${main::delim_line}/,$buf);
+
+$show_int_stat = $results[2];
+$show_inter    = $results[4];
+
+@statuses = split(/\n/,$show_int_stat);
+splice(@statuses,0,2);
+
+my $label = shift(@statuses);
+my $label_length = length($label);
+my $offset_status = index($label,"Status");
+my $offset_vlan   = index($label,"Vlan");
+my $offset_duplex = index($label,"Duplex");
+my $offset_speed  = index($label,"Speed");
+my $offset_type   = index($label,"Type");
+
+
+foreach(@statuses){
+  $key_status = (split(/\ /,$_))[0];
+  push(@keys_status,$key_status);
+  $line = substr($_,$offset_status,$label_length);
+  @lines = split(/\ \ */,$line);
+  $st_status{$key_status} = $lines[0];
+  $st_vlan{$key_status} = $lines[1];
+  $st_dp{$key_status} = $lines[2];
+  $st_sp{$key_status} = $lines[3];
+  $st_type{$key_status} = substr($_,$offset_type,$offset_type+100);
+}
+
+
+##########################################
+# show startup-config
+##########################################
+$buf = `${main::binpath}router $host sh run | fmt_inter_config `;
+@configs = split(/\n/,$buf);
+shift(@configs);
+
+foreach(@configs){
+  if($_ =~ /interface /){
+    $key_config = portrans((split(/\ /,$_))[1]);
+    push(@keys_config,$key_config);
+    $buf = "";
+  }
+  if($_ =~ /----------------------------/){
+    $config{$key_config} = $buf;
+  }else{
+    $buf = $buf . $_ . "\n";
+  }
+}
+undef(@configs);
+
+
+
+##########################################
+# show interface
+##########################################
+
+@results = split(/\n/,$show_inter);
+splice(@results,0,1);
+
+undef(@keys);
+foreach $result (@results){
+  if($result !~ /^\ /){
+    @lines = split(/\ /,$result);
+    $key = $lines[0];
+    $key = portrans($lines[0]);
+    push(@keys,$key);
+  }
+
+
+  ##############################################
+  # status check (default)
+  #  L1 Admin down : -
+  #     down       : x
+  #     up         : o
+  #  L2 down       : x
+  #     up         : o
+  ##############################################
+  if( $result =~ /line protocol/ ){
+    $L1_str = (split(/line protocol /,$result))[0];
+
+    if($L1_str =~ /administratively/i){
+      $L1{$key} = $s_ad;
+    }elsif($L1_str =~ /down/i){
+      $L1{$key} = $s_dn;
+    }elsif($L1_str =~ /up/i){
+      $L1{$key} = $s_up;
+    }else{
+      $L1{$key} = $s_na;
+    }
+
+    $L2_str = (split(/line protocol /,$result))[1];
+    if($L2_str =~ /down/i){
+      $L2{$key} = $s_dn;
+    }elsif($L2_str =~ /up/i){
+      $L2{$key} = $s_up;
+    }else{
+      $L2{$key} = $s_na;
+    }
+
+  }
+
+  ##############################################
+  # description check
+  ##############################################
+  if($result =~ /Description/){
+    $dscr{$key} = (split(/: /,$result))[1];
+    if($descr_max ne ""){
+      $dscr{$key} = substr($dscr{$key},0,$descr_max);
+    }
+  }
+
+  ##############################################
+  # ip address check
+  ##############################################
+  if($result =~ /(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})\/(\d{1,2})/){
+
+    $adrs_str = ((split(/is /,$result))[1]);
+
+    $adrs{$key}     = (split(/\//,$adrs_str))[0];
+    $mask_dec{$key} = (split(/\//,$adrs_str))[1];
+
+    @tmps = split(/\./,$adrs{$key});
+    $adrs{$key} = sprintf("%3d.%3d.%3d.%3d",$tmps[0],$tmps[1],$tmps[2],$tmps[3]);
+
+    if($flg_ip_short){
+      $mask_bin{$key} = "/".$mask_dec{$key};
+    }else{
+      $mask_bin{$key} = dec2bin($mask_dec{$key});
+    }
+  }
+
+  ##############################################
+  # mode check
+  ##############################################
+  if($result =~ /-duplex/){
+    $mode_dp{$key} = (split(/-duplex/,$result))[0];
+  }
+  if($result =~ /Mb\/s/){
+    $mode_sp{$key} = (split(/Mb\/s/,$result))[0];
+    @tmps = split(/\,/,$mode_sp{$key});
+    $mode_sp{$key} = $tmps[$#tmps];
+  }
+  if($result =~ /BW/){
+    $mode_bw{$key} = (split(/BW/,$result))[1];
+    $mode_bw{$key} = (split(/\ /,$mode_bw{$key}))[1];
+    $mode_bw{$key} = sprintf("%.3f",($mode_bw{$key}+0)/1000);
+    $mode_bw{$key} = $mode_bw{$key} . " Mbps";
+  }
+
+  $if{$key} = $key;
+
+}
+
+
+
+
+
+foreach $key (@keys){
+  @configs = split(/\n/,$config{$key});
+  foreach $conf (@configs){
+    if($conf =~ /ip ospf cost/){
+      @tmps = split(/\ /,$conf);
+      $ospf_cost{$key} = $tmps[$#tmps];
+    }
+
+    if($conf =~ /ip ospf priority/){
+      @tmps = split(/\ /,$conf);
+      $ospf_pri{$key} = $tmps[$#tmps];
+    }
+
+
+    ######################################
+    # hsrp secondry addres not available
+    ######################################
+    if($conf =~ /standby\ \d{1,}\ ip/){
+      @tmps = split(/\ /,$conf);
+      if($flg_ip_short){
+        $hsrp_ip{$key} = "--.".(split(/\./,$tmps[$#tmps]))[3];
+      }else{
+        $hsrp_ip{$key} = $tmps[$#tmps];
+      }
+      $hsrp_group{$key} = $tmps[$#tmps-2];
+    }
+
+    if($conf =~ /standby\ \d{1,}\ priority/){
+      @tmps = split(/\ /,$conf);
+      $hsrp_pri{$key} = $tmps[4];
+    }
+
+    if($conf =~ /ip access-group\ \d{1,}\ in/){
+      @tmps = split(/\ /,$conf);
+      $acl_in{$key} = $tmps[$#tmps-1];
+    }
+
+    if($conf =~ /ip access-group\ \d{1,}\ out/){
+      @tmps = split(/\ /,$conf);
+      $acl_out{$key} = $tmps[$#tmps-1];
+    }
+
+  }
+}
+
+
+
+###############################
+# index routine
+###############################
+if($flg_csv eq "csv"){
+
+  print "Interface,";
+  print "Description,";
+  print "L1 Status,";
+  print "L2 Status,";
+  print "Status,";
+  print "Vlan,";
+  print "IP address,";
+  print "Subnet Mask,";
+  print "HSRP Group,";
+  print "HSRP Priority,";
+  print "HSRP IP,";
+  print "ACL IN,";
+  print "ACL OUT,";
+  print "OSPF Cost,";
+  print "OSPF Priority,";
+  print "Duplex(Setting),";
+  print "Speed(Setting),";
+  print "Duplex(Actual),";
+  print "Speed(Actual),";
+  print "Bandwidth(Setting),";
+  print "MediaType,\n";
+
+
+
+  foreach $key (@keys){
+    foreach $item (@items){
+      $$item{$key} =~ s/^\ \ *//i;
+      $$item{$key} =~ s/\ \ *$//i;
+      print "\"$$item{$key}\",";
+    }
+    print "\n";
+  }
+}elsif($flg_csv eq "line"){
+
+
+  $total_length = 0 ;
+  foreach $item (@items){
+    undef(@tmps);
+    foreach $key (@keys){
+      push(@tmps,$$item{$key});
+    }
+    $var_name = $item . "_max";
+    $$var_name = haruca::get_max_len(@tmps);
+    if($$var_name == 0 ){
+      $$var_name = 1;
+    }
+    $total_length += $$var_name;
+  }
+  $total_length = + $total_length - 1 + $#items;
+
+  $ind_interface = 1 + $if_max + $descr_max;
+  $ind_status    = 2 + $L1_max + $L2_max + $st_status_max;
+  $ind_vlan      = 0 + $st_vlan_max;
+  $ind_ip        = 4 + $adrs_max + $mask_bin_max + $hsrp_group_max + $hsrp_pri_max + $hsrp_ip_max;
+  $ind_acl       = 1 + $acl_in_max + $acl_out_max;
+  $ind_ospf      = 1 + $ospf_cost_max + $ospf_pri_max;
+  $ind_mode      = 3 + $mode_dp_max + $mode_sp_max + $st_dp_max + $st_sp_max;
+  $ind_sp        = 0 + $mode_bw_max;
+  $ind_media     = 0 + $st_type_max;
+
+
+
+  push(@periods,$ind_interface);
+  push(@periods,$ind_status);
+  push(@periods,$ind_vlan);
+  push(@periods,$ind_ip);
+  push(@periods,$ind_acl);
+  push(@periods,$ind_ospf);
+  push(@periods,$ind_mode);
+  push(@periods,$ind_sp);
+  push(@periods,$ind_media);
+
+
+  $delimit = "+";
+  for($num = 0 ; $num <= $total_length ; $num++){
+    if($num == 0){
+      $period = shift(@periods);
+      $delimit .= "-";
+    }elsif($num == $period){
+      $period = $period + 1 + shift(@periods);
+      $delimit .= "+";
+    }else{
+      $delimit .= "-";
+    }
+  }
+  $delimit .= "+";
+
+
+  $buf = "";
+  $buf = $buf . "$delimit\n";
+  $buf = $buf . "|" . haruca::len_form(" INTERFACE \(IF,Description\)",$ind_interface,"right");
+  $buf = $buf . "|" . haruca::len_form(" STAT \(L1,L2\)",$ind_status,"right");
+  $buf = $buf . "|" . haruca::len_form(" Vlan",$ind_vlan,"right");
+  $buf = $buf . "|" . haruca::len_form(" IP \(Adrs,Mask,HSRP-Grp,Pri,Adrs\)",$ind_ip,"right");
+  $buf = $buf . "|" . haruca::len_form(" ACL",$ind_acl,"right");
+  $buf = $buf . "|" . haruca::len_form(" OSPF",$ind_ospf,"right");
+  $buf = $buf . "|" . haruca::len_form(" MODE",$ind_mode,"right");
+  $buf = $buf . "|" . haruca::len_form(" SPEED",$ind_sp,"right");
+  $buf = $buf . "|" . haruca::len_form("MEDIA",$ind_media,"right");
+  $buf = $buf . "|\n$delimit\n";
+
+  print $buf;
+
+  foreach $key (@keys){
+    foreach $item (@items){
+      $var_name = $item . "_max";
+
+      if($$item{$key} eq ""){
+       $$item{$key} = "-";
+      }
+      if(($item eq "if")||($item eq "dscr")||($item eq "mask_bin")){
+        $buf = haruca::len_form($$item{$key},($$var_name),"right");
+      }else{
+        $buf = haruca::len_form($$item{$key},($$var_name),"left");
+      }
+
+      print "|$buf";
+    }
+    print "|\n$delimit\n";
+  }
+
+}else{
+
+  $total_length = 0 ;
+  foreach $item (@items){
+    undef(@tmps);
+    foreach $key (@keys){
+      push(@tmps,$$item{$key});
+    }
+    $var_name = $item . "_max";
+    $$var_name = haruca::get_max_len(@tmps);
+    if($$var_name == 0 ){
+      $$var_name = 1;
+    }
+    $total_length += $$var_name;
+  }
+
+
+
+  foreach $key (@keys){
+    foreach $item (@items){
+      $var_name = $item . "_max";
+
+      if($$item{$key} eq ""){
+       $$item{$key} = "-";
+      }
+      if(($item eq "if")||($item eq "dscr")||($item eq "mask_bin")){
+        $buf = haruca::len_form($$item{$key},($$var_name),"right");
+      }else{
+        $buf = haruca::len_form($$item{$key},($$var_name),"left");
+      }
+
+      print "$buf ";
+    }
+    print "\n";
+  }
+
+
+}
+
+exit;
+
+
+sub portrans{
+  my ($name) = @_;
+  my ($result);
+
+  $name =~ s/FastEthernet/Fa/i;
+  $name =~ s/GigabitEthernet/Gi/i;
+  $name =~ s/Ethernet/E/i;
+  $name =~ s/Vlan/Vl/i;
+  $name =~ s/Loopback/Lo/i;
+  $name =~ s/Port-channel/Po/i;
+  $name =~ s/Serial/Se/i;
+  $name =~ s/TokenRing/TR/i;
+
+  return $name;
+}
+
+
+sub dec2bin{
+  my ($dec) = @_;
+  my $result;
+  my $flg = 0;
+  for(my $num=1;$num<=32;$num++){
+    if(($dec--)&&(!$flg)){
+      $result = $result."1";
+    }else{
+      $flg = 1;
+      $result = $result."0";
+    }
+    if(!($num%8)){
+      $result = $result.".";
+    }
+  }
+
+  @octs = split(/\./,$result);
+  $result = "";
+  foreach(@octs){
+    $result .= oct "0b" . $_ ;
+    $result .= ".";
+  }
+
+  chop($result);
+
+  return $result;
+}

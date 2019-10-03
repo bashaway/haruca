@@ -1,0 +1,144 @@
+#!/usr/bin/perl
+
+use haruca;
+use DBI;
+use strict;
+
+my $file_tmp = `${main::binpath}mkpasswd 10 alnum file`;
+my ($sth, $lognames, $gettime, $result, $olddate, $buf, $buf_old, $buf_latest);
+my $dbh = haruca::connect_db();
+my (@res, @dates);
+
+$lognames = $dbh->selectcol_arrayref("select logname from plugin_haruca_logtype");
+
+if($#ARGV < 1){
+  prt_error();
+  exit;
+}
+
+my $logname;
+my $hostname;
+my $olddate;
+
+$logname  = $dbh->quote($ARGV[0]);
+$hostname = $ARGV[1];
+$olddate  = $ARGV[2];
+
+
+my $sql;
+my $logtypecode;
+my $loggetcmd;
+
+# logtypecode 判別
+$sql  = "select logtypecode,loggetcmd from plugin_haruca_logtype where logname = $logname";
+$sth = $dbh->prepare($sql);
+$sth->execute;
+$sth->bind_columns(undef,\($logtypecode,$loggetcmd));
+if(!$sth->fetch){ prt_error(); exit; }
+
+# hostname 判別
+my $hostcode;
+$hostcode = haruca::hostname_to_hostcode($hostname);
+if(!$hostcode){ print "$hostname : unknown host \n"; exit; }
+
+
+if($olddate){
+  # 日付フォーマット変換
+  # 0000-00-00 00:00:00
+  if($olddate =~ /^[0-9]{8}$/){
+    @dates = split(//,$olddate);
+    $olddate = $dates[0].$dates[1].$dates[2].$dates[3]."-".$dates[4].$dates[5]."-".$dates[6].$dates[7];
+  }elsif($olddate =~ /^[0-9]{14}$/){
+    @dates = split(//,$olddate);
+    $olddate  = $dates[0].$dates[1].$dates[2].$dates[3]."-".$dates[4].$dates[5]."-".$dates[6].$dates[7]." ";
+    $olddate .= $dates[8].$dates[9].":".$dates[10].$dates[11].":".$dates[12].$dates[13];
+  }else{
+    $olddate = " ";
+  }
+
+
+  # 過去log取得
+  $sql  = "select value,gettime from plugin_haruca_logold ";
+  $sql .= " where hostcode = $hostcode and logtypecode = $logtypecode and ";
+  $sql .= " gettime like \"${olddate}%\" order by gettime desc";
+
+  $sth = $dbh->prepare($sql);
+  $sth->execute;
+  $sth->bind_columns(undef,\($result,$gettime));
+  if(!$sth->fetch){
+    $sql  = "select value,gettime from plugin_haruca_log ";
+    $sql .= " where hostcode = $hostcode and logtypecode = $logtypecode and ";
+    $sql .= " gettime like \"${olddate}%\" order by gettime desc";
+
+    $sth->finish;
+    $sth = $dbh->prepare($sql);
+    $sth->execute;
+    $sth->bind_columns(undef,\($result,$gettime));
+
+    if(!$sth->fetch){
+      print "$loggetcmd $hostname ($olddate) : $main::noinfo \n";
+      $sql  = "select gettime from plugin_haruca_logold ";
+      $sql .= " where logtypecode = $logtypecode and hostcode = $hostcode order by gettime desc";
+      $result = $dbh->selectcol_arrayref("$sql");
+      #if(@$result){
+        foreach(@$result){
+          $buf_old .= $_."\n"; 
+        }
+      #}else{
+        $sql  = "select gettime from plugin_haruca_log ";
+        $sql .= " where logtypecode = $logtypecode and hostcode = $hostcode order by gettime desc";
+        $result = $dbh->selectcol_arrayref("$sql");
+        foreach(@$result){
+          $buf_latest .= $_."\n"; 
+        }
+      #}
+      print $buf_latest.$buf_old;
+      $sth->finish;
+      $dbh->disconnect;
+      exit;
+    }
+  }else{
+  
+    open(FILE,"| gzip -d - > ${main::tmppath}$file_tmp");
+    print FILE $result;
+    close(FILE);
+    $result = `cat ${main::tmppath}$file_tmp`;
+    system("rm -f ${main::tmppath}$file_tmp");    
+
+  }
+
+}else{
+  # 最新log取得
+  $sql  = "select value,gettime from plugin_haruca_log ";
+  $sql .= " where hostcode = $hostcode and logtypecode = $logtypecode ";
+  $sql .= " order by gettime desc";
+
+  $sth = $dbh->prepare($sql);
+  $sth->execute;
+  $sth->bind_columns(undef,\($result,$gettime));
+
+  if(!$sth->fetch){ print "$loggetcmd $hostname : $main::noinfo \n"; exit; }
+}
+
+$sth->finish;
+$dbh->disconnect;
+
+$result = haruca::unquote($result);
+
+print $main::delim.$loggetcmd." ".$hostname." (".$gettime.")\n";
+print $main::delim_line.$loggetcmd."\n".$main::delim_line;
+print $result;
+print "\n";
+print $main::delim.$loggetcmd." ".$hostname." (".$gettime.")\n";
+
+exit;
+
+sub prt_error{
+  $buf = "usage : ".(split(/\//,$0))[-1]." [ ";
+  foreach(@$lognames){
+    $buf .= $_." | ";
+  }
+  $buf =~ s/\|\ $/\]/;
+  print "$buf hostname [olddate]\n";
+  $dbh->disconnect;
+}

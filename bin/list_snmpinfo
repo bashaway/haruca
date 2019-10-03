@@ -1,0 +1,104 @@
+#!/usr/bin/perl
+
+use haruca;
+use DBI;
+use strict;
+
+my ($str1, $str2, $str3, $res1, $res2, $res3, $dbh, $host);
+my @hosts;
+
+haruca::get_args();
+
+while(<STDIN>){
+  push(@hosts,(split(/\ \ */,((split(/\n/,$_))[0])))[0]);
+}
+
+if($#main::opts == -1){
+  print "usage : $0 [ --cpu | --fan | --memory | --ps | --temp ] < HOSTLIST\n";
+  exit;
+}
+
+if($main::opts[0] eq "cpu"){
+  $str1 = ".1.3.6.1.4.1.9.2.1.56.0";
+  $str2 = ".1.3.6.1.4.1.9.2.1.57.0";
+  $str3 = ".1.3.6.1.4.1.9.2.1.58.0";
+}elsif($main::opts[0] eq "fan"){
+  $str1 = ".1.3.6.1.4.1.9.9.13.1.4.1.2";
+  $str2 = ".1.3.6.1.4.1.9.9.13.1.4.1.3";
+}elsif($main::opts[0] eq "memory"){
+  $str1 = ".1.3.6.1.4.1.9.9.48.1.1.1.5.1";
+  $str2 = ".1.3.6.1.4.1.9.9.48.1.1.1.6.1";
+}elsif($main::opts[0] eq "ps"){
+  $str1 = ".1.3.6.1.4.1.9.9.13.1.5.1.2";
+  $str2 = ".1.3.6.1.4.1.9.9.13.1.5.1.3";
+}elsif($main::opts[0] eq "temp"){
+  $str1 = ".1.3.6.1.4.1.9.9.13.1.3.1.2";
+  $str2 = ".1.3.6.1.4.1.9.9.13.1.3.1.3";
+  $str3 = ".1.3.6.1.4.1.9.9.13.1.3.1.6";
+}else{
+  print "usage : $0 [ --cpu | --fan | --memory | --ps | --temp ] < HOSTLIST\n";
+  exit;
+}
+
+my $com_str;
+my $adrs;
+my $snmp_vers;
+my $cmd_opt;
+my $sql;
+my $sth;
+
+$cmd_opt = "-Oe -Oq -Ov ";
+$dbh = haruca::connect_db();
+
+foreach $host (@hosts){
+
+  $sql = "select snmp_community,hostname,snmp_version from host where description = '$host'";
+  $sth = $dbh->prepare($sql);
+  $sth->execute;
+  $sth->bind_columns(undef,\($com_str,$adrs,$snmp_vers));
+  $sth->fetch;
+  if($snmp_vers eq "2"){
+   $snmp_vers = "2c";
+  }
+  $sth->finish;
+
+  print $host;
+
+  if($str1){
+    $res1 = `${main::snmpwalkpath} $cmd_opt -v $snmp_vers -c $com_str $adrs $str1 2> /dev/null`;
+    chomp($res1);
+    if($res1 =~ /^no such/i){
+      print $main::delim;
+    }else{
+      print $main::delim.$res1;
+    }
+  }
+
+
+  if($str2){
+    $res2 = `${main::snmpwalkpath} $cmd_opt -v $snmp_vers -c $com_str $adrs $str2 2> /dev/null`;
+    chomp($res2);
+    if($res2 =~ /^no such/i){
+      print $main::delim;
+    }else{
+      print $main::delim.$res2;
+    }
+  }
+
+  if($str3){
+    $res3 = `${main::snmpwalkpath} $cmd_opt -v $snmp_vers -c $com_str $adrs $str3 2> /dev/null`;
+    chomp($res3);
+    if($res3 =~ /^no such/i){
+      print $main::delim;
+    }else{
+      print $main::delim.$res3;
+    }
+  }
+
+  print "\n";
+
+}
+
+$dbh->disconnect;
+
+exit;

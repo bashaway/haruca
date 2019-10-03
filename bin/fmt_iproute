@@ -1,0 +1,128 @@
+#!/usr/bin/perl
+
+use strict;
+use haruca;
+
+my ($metric,$sub,$desc,$type,$dest,$if,$next,$one,$age,$tmp,$distance,$cost,$buf);
+my (@tmps,@routes,@others);
+
+undef @routes;
+
+while(<STDIN>){
+  if($_ =~ /\r\n$/){
+    $_ =~ s/\r\n/\n/g;
+  }
+
+
+  if($_ =~ /^\ +\[/){
+    $tmp =~ s/\[(\d+).+//g;
+    $_ =~ s/^\ +//g;
+    $_ = $tmp.$_;
+  }
+
+  if($_ =~ /(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})\/(\d{1,2})\ \[/){
+    #xxx.xxx.xxx.xxx/xx [
+    push(@routes,$_);
+  }elsif($_ =~ /(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})\/(\d{1,2})\ $/){
+    #xxx.xxx.xxx.xxx/xx で終わってる箇所
+    #push(@routes,$_);
+  }elsif($_ =~ /^\ +\[/){
+    push(@routes,$_);
+  }elsif($_ =~ /^C /){
+    push(@routes,$_);
+  }elsif($_ =~ /^S /){
+    push(@routes,$_);
+  }elsif($_ =~ /^L /){
+    push(@routes,$_);
+  }elsif($_ =~ /^B /){
+    push(@routes,$_);
+  }elsif($_ =~ /^O /){
+    push(@routes,$_);
+  }elsif($_ =~ /subnetted/){
+  }
+
+  $tmp = $_;
+  chomp($tmp);
+}
+
+foreach $one (@routes){
+  $type = "---";
+  $dest = "---";
+  $metric = "---";
+  $next = "---";
+  $desc = "--";
+  $age = "---";
+  $sub = "---";
+  $if = "---\n";
+
+
+  @tmps = split(/(\d+)\.(\d+)\.(\d+)\.(\d+)/,$one);
+  @others = split(/\ /,$tmps[5]);
+
+  if(($one =~ /directly/)||($one =~ /Null/)){
+    $type = $tmps[0];
+    $dest = sprintf("%03d.%03d.%03d.%03d",$tmps[1],$tmps[2],$tmps[3],$tmps[4]);
+    $sub = substr($tmps[5],0,3);
+
+    $tmps[5] = substr($tmps[5],4,(length($tmps[5])-4));
+
+    if($one =~ /directly/){
+      $desc = (split(/\,/,$tmps[5]))[0];
+      $age = "---";
+      $if = (split(/\,/,$tmps[5]))[1];
+    }else{
+      $desc = (split(/\,/,$tmps[5]))[0];
+      $age  = (split(/\,/,$tmps[5]))[1];
+      $if = (split(/\,/,$tmps[5]))[2];
+    }
+
+    $metric = "---";
+    $next =  "---";
+
+
+  }else{
+    $desc = "---";
+    $type = $tmps[0];
+    $dest = sprintf("%03d.%03d.%03d.%03d",$tmps[1],$tmps[2],$tmps[3],$tmps[4]);
+    if($others[0] !~ /\//){
+      $sub = "---";
+      $metric = $others[1];
+    }else{
+      $sub = $others[0];
+      $metric = $others[1];
+    }
+    $next = sprintf("%03d.%03d.%03d.%03d",$tmps[6],$tmps[7],$tmps[8],$tmps[9]);
+    if($one !~ /^S/){
+      $age = (split(/\,/,$tmps[10]))[1];
+      $if = (split(/\,/,$tmps[10]))[2];
+    }else{
+    }
+  }
+
+  $type =~ s/\ +/ /g;
+  if($metric ne "---"){
+    $distance = (split(/\//,$metric))[0];
+    $distance = substr($distance,1,length($distance));
+    $cost     = (split(/\//,$metric))[1];
+    $cost     = substr($cost,0,length($cost)-1);
+    $metric = sprintf("[%03d/%04d]",$distance,$cost);
+  }
+  if($age ne "---"){
+    $age = (split(/\ /,$age))[1];
+  }
+  if($if ne "---\n"){
+    $if = (split(/\ /,$if))[1];
+  }
+
+  chomp($age);
+  chomp($if);
+
+  if($next ne "000.000.000.000"){
+    printf("%-5s,%-15s,%-3s,%-10s,%-15s,%-22s,%-9s,%s\n", $type, $dest, $sub, $metric, $next, $desc, $age, $if);
+  }
+
+}
+  #print "-type------dest-------sub---metric-------next--------------desc-----------------age----------------------if--------\n";
+
+exit;
+

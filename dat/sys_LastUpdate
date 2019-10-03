@@ -1,0 +1,139 @@
+#!/usr/bin/perl
+
+use haruca;
+use DBI;
+use strict;
+
+haruca::prt_logdate("SYS_LASTUPDATE START");
+ 
+
+my ( $cmd_diff ,$conf_latest ,$conf_prev ,$delim ,$file_latest ,$file_prev ,$hostcode ,$hostname);
+my ($inv ,$result ,$sql ,$time ,$update_time);
+my ($time_day ,$time_latest ,$time_mon ,$time_prev ,$time_wday ,$time_year ,$time_zone);
+my %month;
+my @results;
+
+my $dbh = haruca::connect_db();
+my $buf;
+my $file_time;
+
+my $debug=0;
+my $str_time;
+
+if(!$debug){
+  system("rm -f ${main::datpath}LastUpdate/*");
+}
+
+
+$month{'Jan'} = "01"; $month{'Feb'} = "02"; $month{'Mar'} = "03";
+$month{'Apr'} = "04"; $month{'May'} = "05"; $month{'Jun'} = "06";
+$month{'Jul'} = "07"; $month{'Aug'} = "08"; $month{'Sep'} = "09";
+$month{'Oct'} = "10"; $month{'Nov'} = "11"; $month{'Dec'} = "12";
+
+$inv  = " | grep -v ^! | grep -v ^Using | grep -v clock-period | egrep -v '(^$delim)'";
+$inv .= " | sed 's/\\ \$//g' ";
+
+foreach $result (split(/\n/,`${main::binpath}search . -hc`)){
+  $hostname = (split(/\ +/,$result))[0];
+  $hostcode = (split(/\ +/,$result))[1];
+
+  # 取得ログのshow startが存在しなければ、対象外
+  $sql  = "select count(id) from plugin_haruca_host ";
+  $sql .= " inner join plugin_haruca_category on plugin_haruca_host.categorycode = plugin_haruca_category.categorycode ";
+  $sql .= " inner join plugin_haruca_cat_get_log on plugin_haruca_cat_get_log.categorycode = plugin_haruca_category.categorycode ";
+  $sql .= " where plugin_haruca_cat_get_log.logtypecode = 1 and id = $hostcode ";
+  if($dbh->selectrow_array($sql) ne "1"){ next; }
+
+  # 50byte 以下はエラーなどで正常に取得できていないものと思われる
+  $sql = "select value,gettime from plugin_haruca_log     where logtypecode = 1 and hostcode = $hostcode and length(value) > 50";
+  @results = $dbh->selectrow_array($sql);
+  $conf_latest = $results[0];
+  $time_latest = $results[1];
+
+  $time = $time_latest = $time_zone = $time_wday = $time_mon = $time_day = $time_year = "";
+
+  if($conf_latest =~ /! Last configuration change at/){
+    $str_time = "! Last configuration change at ";
+  }elsif($conf_latest =~ /! NVRAM config last updated at/){
+    $str_time = "! NVRAM config last updated at ";
+  }
+
+  foreach(split(/\n/,$conf_latest)){
+    if($_ =~ /$str_time/){
+      $time = (split(/$str_time/,$_))[-1];
+      $time_latest = (split(/\ /,$time))[0];
+      $time_zone   = (split(/\ /,$time))[1];
+      $time_wday   = (split(/\ /,$time))[2];
+      $time_mon    = (split(/\ /,$time))[3];
+      $time_day    = (split(/\ /,$time))[4];
+      $time_year   = (split(/\ /,$time))[5];
+    }
+  }
+
+
+
+  $sql = "select value,gettime from plugin_haruca_logold where logtypecode = 1 and hostcode = $hostcode order by gettime desc";
+  @results = $dbh->selectrow_array($sql);
+  $conf_prev = $results[0];
+  $time_prev = $results[1];
+
+
+  $time_latest =~ s/:/-/g;
+  #$update_time = "${time_year}-$month{$time_mon}-${time_day}-${time_latest}";
+  $update_time = sprintf("%04d-%02d-%02d-%s",${time_year},$month{$time_mon},${time_day},${time_latest});
+
+
+  if(!$conf_prev){
+    if($conf_latest){
+      $buf = "${main::not_update_str}\n";
+    }else{
+      $buf = "cannot get configuration.\n";
+      $update_time = "0000-00-00-00-00-00";
+    }
+  }else{
+    $file_latest = `${main::binpath}mkpasswd 10 alnum file`;
+    open(FILE,"> ${main::tmppath}$file_latest");
+    print FILE $conf_latest;
+    close(FILE);
+
+    $file_prev = `${main::binpath}mkpasswd 10 alnum file`;
+    open(FILE,"| gzip -d - > ${main::tmppath}$file_prev");
+    print FILE $conf_prev;
+    close(FILE);
+
+    $cmd_diff  = " diff ${main::tmppath}$file_prev ${main::tmppath}$file_latest ";
+    $cmd_diff .= " | egrep '(^<|^>)' ";
+    $cmd_diff .= " | egrep -v '(#time|secret|community|snmp-server host|password|clock-period|authentication-key)'";
+    $cmd_diff .= " | egrep -v '(^[<>]\ \!)'";
+    $cmd_diff .= " | egrep -v '(Using..*out of..*bytes)'";
+    $cmd_diff .= " | egrep -v '(Using..*out of..*bytes|^ *!|ntp clock-period|Load.for.five.secs:|Time.source.is.NTP)'";
+    $cmd_diff .= " | egrep -v '( Uncompressed configuration from)'";
+
+    $buf = `$cmd_diff`;
+
+    system("rm -f ${main::tmppath}$file_latest");
+    system("rm -f ${main::tmppath}$file_prev");
+
+    if($buf){
+
+      if($debug){
+        print "====== $hostname : $update_time ======\n";
+        print $buf;
+      }else{
+        open(FILE,"> ${main::datpath}LastUpdate/${hostname}-$update_time");
+        print FILE $buf;
+        close(FILE);
+      }
+
+    }
+
+  }
+
+}
+
+$dbh->disconnect;
+
+haruca::prt_logdate("SYS_LASTUPDATE END");
+
+exit;
+

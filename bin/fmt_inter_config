@@ -1,0 +1,83 @@
+#!/usr/bin/perl
+
+use haruca;
+use strict;
+my ($noshutflg, $flg_check, $flg_int, $ifname, $search_type, $search_num);
+my %values;
+
+if($ARGV[0] =~ /nosh/){
+  $noshutflg = 1;
+}else{
+  $noshutflg = 0;
+}
+
+
+$flg_check = 0;
+$flg_int = 0;
+while(<STDIN>){
+  if($_ =~ /\r\n$/){
+    $_ =~ s/\r\n/\n/g;
+  }
+
+  if($_ =~ /^!/){next;}
+
+  if($_ =~ /^[a-zA-Z]/){
+    if($_ =~ /^interface/){
+      $flg_check = 1;
+      chomp($ifname = (split(/\ /,$_))[1]);
+    }else{
+      $flg_check = 0;
+    }
+  }elsif($flg_check){
+    $values{$ifname} .= $_;
+  }
+
+  if($_ =~ /^show int/){
+    $flg_int = 1;
+    last;
+  }
+
+}
+
+if($flg_int){
+  undef(%values);
+  while(<STDIN>){
+    if($_ =~ /\r\n$/){
+      $_ =~ s/\r\n/\n/g;
+    }
+    if($_ =~ /^[A-Z]/){
+      $ifname = (split(/\ /,$_))[0];
+    }else{
+      $values{$ifname} .= $_;
+    }
+  }
+}
+
+haruca::get_args();
+$search_type = $main::args[0];
+$search_num  = $main::args[1];
+
+foreach(haruca::ifsort(keys %values)){
+  if($noshutflg){
+    if(($values{$_} =~ /^\ shutdown/)||($values{$_} =~ /\n\ shutdown/)){ 
+        next; 
+    }
+  }
+  if(!$search_type){
+    print $main::delim_line;
+    print "interface $_\n";
+    print $values{$_};
+  }else{
+    if($_ =~ /^$search_type/i){
+      if(($search_num eq "")||(($search_num ne "") && ($_ =~ /$search_num$/i))){
+        print $main::delim_line;
+        print "interface $_\n";
+        print $values{$_};
+      }
+    }
+  }
+}
+print $main::delim_line;
+
+exit;
+

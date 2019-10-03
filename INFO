@@ -1,0 +1,8 @@
+[info]
+name = haruca
+version = 0.3.0beta2
+longname = half ability router utility and config archiver
+author = bashaway
+email = haruca_tech@gmail.com
+homepage = http://www.prosper2.org/devwiki/index.php?haruca
+compat = 1.1.37

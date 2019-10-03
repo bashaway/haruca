@@ -1,0 +1,185 @@
+#!/usr/bin/perl
+
+use strict;
+use haruca;
+use DBI;
+
+my ($dbh,$sth,$hostname ,$id,$result ,$model ,$version ,$serial ,$sql);
+my (@hosts,@results);
+
+if($#ARGV == -1){
+  print "usage : $0 [HOSTNAME | HOSTID ] [ --all ]\n";
+  exit;
+}
+
+$dbh = haruca::connect_db();
+if($ARGV[0] eq "--all"){
+  $sql  = "select description,host.id from host ";
+  $sql .= " inner join plugin_haruca_host     on host.id = plugin_haruca_host.id ";
+  $sql .= " inner join plugin_haruca_category on plugin_haruca_host.categorycode = plugin_haruca_category.categorycode ";
+  $sql .= " where host.disabled != 'on' and plugin_haruca_category.vtypass is not NULL;";
+
+  $sth = $dbh->prepare($sql);
+  $sth->execute;
+  $sth->bind_columns(undef,\($hostname,$id));
+
+  while($sth->fetch){
+    get_info($hostname,$id);
+  }
+  $sth->finish;
+
+}else{
+  if($ARGV[0] =~ /^[0-9]+$/){
+    $sql  = "select description,host.id from host inner join plugin_haruca_host on host.id = plugin_haruca_host.id ";
+    $sql .= " where host.id = '$ARGV[0]' and host.disabled != 'on'";
+  }else{
+    $sql  = "select description,host.id from host inner join plugin_haruca_host on host.id = plugin_haruca_host.id ";
+    $sql .= " where host.description = '$ARGV[0]' and host.disabled != 'on'";
+  }
+
+  @results = $dbh->selectrow_array($sql);
+  if(@results){
+    get_info($results[0],$results[1]);
+  }
+}
+$dbh->disconnect;
+
+exit;
+
+sub get_snmp_info{
+
+  my ($dbh,$hostname,$cmd,$sql,$community,$snmp_vers,$index,$description,$version);
+  my (@results);
+  my (%info);
+  $hostname = shift;
+
+  $sql = "select snmp_community,snmp_version from host where description = '$hostname'";
+  $dbh = haruca::connect_db();
+  @results = $dbh->selectrow_array($sql);
+  $dbh->disconnect;
+  $community = $results[0];
+  if($results[1] = "2"){
+    $snmp_vers   = "2c";
+  }else{
+    $snmp_vers   = $results[1];
+  }
+  $cmd = "${main::snmpwalkpath} -c $community -v $snmp_vers $hostname 1.3.6.1.2.1.47.1.1.1.1.2";
+  foreach(split(/\n/,`$cmd`)){
+    if($_ =~ m/.+\.(\d+)\ =/){
+      $index = $1;
+    }else{
+      $index = "";
+    }
+    if($_ =~ m/.+=.+STRING:\ +"(.+)"/){
+      $info{'description'}{$index} = $1;
+    }else{
+      $info{'description'}{$index} = "";
+    }
+  }
+
+  foreach( sort keys %{$info{'description'}} ){
+    # インタフェイスとおもわれる項番は飛ばす
+    if($info{'description'}{$_} =~ m/ethernet/i){next;}
+
+    # software version
+    $cmd = "${main::snmpgetpath} -c $community -v $snmp_vers $hostname 1.3.6.1.2.1.47.1.1.1.1.10.$_";
+    $version = `$cmd`;
+    $version =~ s/,.+?"/"/;
+    if($version =~ m/\"(.*?)\"/){
+      $info{'version'}{$_} = $1;
+    }else{
+      $info{'version'}{$_} = "";
+    }
+
+    # serial
+    $cmd = "${main::snmpgetpath} -c $community -v $snmp_vers $hostname 1.3.6.1.2.1.47.1.1.1.1.11.$_";
+    if(`$cmd` =~ m/.+=.+STRING:\ +"(.+)"/){
+      $info{'serial'}{$_} = $1;
+    }else{
+      $info{'serial'}{$_} = "";
+    }
+
+    # model
+    $cmd = "${main::snmpgetpath} -c $community -v $snmp_vers $hostname 1.3.6.1.2.1.47.1.1.1.1.13.$_";
+    if(`$cmd` =~ m/.+=.+STRING:\ +"(.+)"/){
+      $info{'model'}{$_} = $1;
+    }else{
+      $info{'model'}{$_} = "";
+    }
+
+    if( $info{'description'}{$_} && $info{'version'}{$_} && $info{'serial'}{$_} && $info{'model'}{$_} ){
+      #print $_.":";
+      #print $info{'description'}{$_}.":";
+      if($info{'description'}{$_} =~ m/HP/){
+        $info{'description'}{$_} =~ s/\ switch..*//i;
+        return $info{'description'}{$_}.":".$info{'version'}{$_}.":".$info{'serial'}{$_};
+      }else{
+        return $info{'model'}{$_}.":".$info{'version'}{$_}.":".$info{'serial'}{$_};
+      }
+    }
+  }
+
+
+}
+
+
+sub get_cisco_info{
+  my ($cmd,$dbh,$id,$hostname ,$result ,$model ,$version ,$serial ,$sql);
+
+  $hostname = shift;
+
+  $result = `${main::binpath}router $hostname show version`;
+
+  if($result =~/${main::no_host_info_str}/){return;}
+
+  foreach(split(/\n/,$result)){
+    if($_ =~ /[Cc]isco\ (.+)\ (\(.+\)).+bytes of memory.$/){$model = (split(/\(/,$_))[0]; $model =~ s/[Cc]isco\ //g; $model =~ s/\ $//g; }
+    if($_ =~ /IOS.+Version\ (.+),/){ $version = $1; }
+    if($_ =~ /[Pp]rocessor.+ID/){ $serial = (split(/[,\ ]/,$_))[3]; }
+  }
+
+  return $model.":".$version.":".$serial;
+
+}
+
+sub get_info{
+
+  my ($dbh,$id,$hostname ,$result ,$model ,$version ,$serial ,$sql);
+  $hostname = shift;
+  $id = shift;
+
+  $result = get_cisco_info($hostname);
+
+  if($result =~ /::/){
+    $result = get_snmp_info($hostname);
+  }
+
+
+  if( (split(/:/,$result))[0] ){
+    $model   = "'".(split(/:/,$result))[0]."'";
+  }else{
+    $model   = "NULL";
+  }
+
+  if( (split(/:/,$result))[1] ){
+    $version = "'".(split(/:/,$result))[1]."'";
+  }else{
+    $version   = "NULL";
+  }
+
+  if( (split(/:/,$result))[2] ){
+    $serial  = "'".(split(/:/,$result))[2]."'";
+  }else{
+    $serial   = "NULL";
+  }
+
+
+  $dbh = haruca::connect_db();
+  $sql = "update plugin_haruca_host set model=$model , version=$version , serial=$serial where id=$id";
+  #print $model . " : " . $version . " : " . $serial . "\n";
+  #print $sql."\n";
+  $dbh->do($sql);
+  $dbh->disconnect;
+
+}
+

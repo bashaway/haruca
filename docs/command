@@ -1,0 +1,248 @@
+add path user environment
+
+  PATH=$PATH:/YOUR/CACTI/DIRECTORY/plugins/haruca/bin
+
+
+---------------------------------------
+search
+---------------------------------------
+ DESCRIPTION
+  Search hosts from registed devices.
+ 
+ USAGE
+  [user@cacti]$ search keyword [-hitnlvcs] [+POS sort-position]
+
+ OPTIONS
+  -h : hostname
+  -i : ip address (loopback)
+  -t : type
+  -n : office name
+  -l : office location
+  -v : iosvers
+  -c : hostcode
+  -s : serial
+  -category=[CATEGORY]
+
+ EXAMPLES
+  Search hostname and ip address.
+  [user@cacti]$ search ROUTERNAME -hi
+
+  Sort model or IOSversion.
+  [user@cacti]$ search . +2
+  [user@cacti]$ search ROUTERNAME -hitv +3
+
+
+---------------------------------------
+ipsearch
+---------------------------------------
+ DESCRIPTION
+  Search ip address from registed devices.
+
+ USAGE
+  [usr@cacti]$ ipsearch keyword [-nosh | -a ]
+
+ OPTIONS
+  -nosh : print no shutdown interface.
+  -a    : print address assigned interface.
+
+ EXAMPLES
+  [user@cacti]$ ipsearch 192.168.0.
+  [user@cacti]$ ipsearch 172.16. -nosh
+  [user@cacti]$ ipsearch FastEthernet -a
+
+
+---------------------------------------
+show
+---------------------------------------
+ DESCRIPTION
+  Print logs.
+
+ USAGE
+  show LOGTYPE HOSTNAME
+
+ EXAMPLES
+  [user@cacti]$ show start HOSTNAME
+
+
+---------------------------------------
+list_logtool
+---------------------------------------
+ DESCRIPTION
+  Search STRING from logs.
+
+ USAGE
+  list_logtool LOGTYPE STRING < ROUTERLIST
+
+ EXAMPLES
+  [user@cacti]$ search HOSTNAME | list_logtool start community
+  [user@cacti]$ ipsearch 192.168.0. | list_logtool start timezone
+
+
+---------------------------------------
+list_ping
+---------------------------------------
+ DESCRIPTION
+  Execute ping to LIST
+
+ USAGE
+  list_ping < ROUTERLIST
+
+ EXAMPLES
+  [user@cacti]$ search HOSTNAME | list_ping
+
+
+---------------------------------------
+fmt_dcrpt
+---------------------------------------
+ DESCRIPTION
+  Decript strings (only begin 7code)
+
+ USAGE
+  fmt_dcrpt < FILE
+
+ EXAMPLES
+  [user@cacti]$ search HOSTNAME | list_logtool start password | fmt_dcrpt
+
+
+---------------------------------------
+fmt_inter_config
+---------------------------------------
+ DESCRIPTION
+  PickUp interface config from configfile.
+
+ USAGE
+  fmt_inter_config [ -nosh ] [ INTERFACE ] < CISCO_CONFIGFILE
+
+ OPTIONS
+  INTERFACE : print specific interface.
+  -nosh     : print no shutdown interfaces.
+
+ EXAMPLES
+  [user@cacti]$ show start HOSTNAME | fmt_inter_config -nosh
+  [user@cacti]$ show start HOSTNAME | fmt_inter_config vlan 100
+
+
+---------------------------------------
+fmt_inter_traffic
+---------------------------------------
+ DESCRIPTION
+  Formats result of "show interfaces"
+
+ USAGE
+  fmt_inter_traffic < CISCO_SHOW_INTERFACE
+
+ EXAMPLES
+  [user@cacti]$ router HOSTNAME show interface | fmt_inter_traffic
+  [user@cacti]$ show inter HOSTNAME | fmt_inter_traffic
+
+
+---------------------------------------
+fmt_iproute
+---------------------------------------
+ DESCRIPTION
+  Formats result of "show ip route"
+
+ USAGE
+  fmt_iproute < CISCO_SHOW_IP_ROUTE
+
+ EXAMPLES
+  [user@cacti]$ router HOSTNAME show ip route | fmt_iproute
+
+
+---------------------------------------
+router
+---------------------------------------
+ DESCRIPTION
+  Auto login host and execute commands.
+
+ USAGE
+  router HOSTNAME COMMAND [,COMMAND]
+
+ EXAMPLES
+  [user@cacti]$ router HOSTNAME show log
+  [user@cacti]$ router HOSTNAME show log , show user , show ntp status
+
+
+---------------------------------------
+portlist
+---------------------------------------
+ DESCRIPTION
+  List ports of host.
+
+ USAGE
+  portlist HOSTNAME [csv|line]
+
+ OPTIONS
+  csv  : print csv format
+  line : print with border
+
+ EXAMPLES
+  [user@cacti]$ portlist HOSTNAME 
+  [user@cacti]$ portlist HOSTNAME csv
+
+
+---------------------------------------
+list_snmpinfo
+---------------------------------------
+ DESCRIPTION
+  Get snmp infromation.
+
+ USAGE
+  list_snmpinfo [ --cpu | --fan | --memory | --ps | --temp ] < HOSTLIST
+
+ OPTIONS
+  --cpu     : print cpu utilization.
+  --fan     : print fan status.
+  --memory  : print memory utilization.
+  --ps      : print power supply status.
+  --temp    : print templature.
+
+ EXAMPLES
+  [user@cacti]$ search HOSTNAME | list_snmpinfo --cpu
+
+
+---------------------------------------
+mac_to_vender
+---------------------------------------
+ DESCRIPTION
+  Map mac address to vender code.
+
+ USAGE
+  mac_to_vender < INFO
+
+ EXAMPLES
+  [user@cacti]$ router HOSTNAME sh arp | mac_to_vender
+
+
+---------------------------------------
+ping_watch
+---------------------------------------
+ DESCRIPTION
+  Ping to hostlist.
+
+ USAGE
+  ping_watch < HOSTLIST
+
+ EXAMPLES
+  [user@cacti]$ search HOSTNAME | ping_watch
+
+
+---------------------------------------
+SYSTEM SCRIPTS
+---------------------------------------
+DO NOT Execute these script.
+ sys_daily_report.pl
+ sys_get_cisco_info
+ sys_get_log.pl
+ sys_get_rtt.pl
+ sys_lastupdate
+ sys_regist_host.pl
+ sys_writefail
+ sys_trapreceiver
+ mkpasswd
+ wildcard_calc
+ haruca.pm
+ ipcalc.pl
+ oui
+
+

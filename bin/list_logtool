@@ -1,0 +1,52 @@
+#!/usr/bin/perl
+
+use haruca;
+use DBI;
+use strict;
+
+my ($dbh,$sth);
+my ($type,$search,$str_hosts,$max,$hostname,$sql,$value);
+
+$type = $ARGV[0];
+$search = $ARGV[1];
+
+if($ARGV[1] eq ""){
+  $search = ".";
+}
+
+$str_hosts = "(";
+$max = 0;
+while(<STDIN>){
+  $hostname = (split(/\ \ */,((split(/\n/,$_))[0])))[0];
+  if($max < length($hostname)){ $max = length($hostname); }
+  $str_hosts .= " host.description = \"$hostname\" or "
+}
+$str_hosts =~ s/or\ $/) /g;
+
+$dbh = haruca::connect_db();
+
+# 最新log取得
+$sql  = "select value,host.description from plugin_haruca_log ";
+$sql .= " inner join plugin_haruca_logtype on plugin_haruca_log.logtypecode = plugin_haruca_logtype.logtypecode ";
+$sql .= " inner join plugin_haruca_host    on plugin_haruca_log.hostcode = plugin_haruca_host.id ";
+$sql .= " inner join host                  on plugin_haruca_host.id = host.id ";
+$sql .= " where $str_hosts and plugin_haruca_logtype.logname = \"$type\" ";
+$sql .= " order by gettime desc";
+
+$sth = $dbh->prepare($sql);
+$sth->execute;
+$sth->bind_columns(undef,\($value,$hostname));
+
+while($sth->fetch){
+  foreach(split(/\n/,$value)){
+    if($_ =~ /$search/){
+      print haruca::len_form($hostname,$max,"right") . " : $_\n";
+    }
+  }
+}
+$sth->finish;
+
+$dbh->disconnect;
+
+exit;
+

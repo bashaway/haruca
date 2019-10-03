@@ -1,0 +1,56 @@
+HARUCA
+Half Ability Router Utility and Config Archives.
+
+##### INSTALL REQUIRE MODOLES #########################
+CentOS
+[user@cacti]$ sudo yum install perl-DBI perl-DBD-MySQL perl-Net-Telnet
+[user@cacti]$ perl -MCPAN -e shell
+cpan> install Net::SMTP
+
+##### MODIFY snmptrapd.conf #########################
+[user@cacti]$ sudo vi /etc/snmp/snmptrapd.conf
+authCommunity execute public
+traphandle default /YOUR/CACTI/DIRECTORY/plugins/haruca/bin/sys_trapreceiver
+snmpTrapdAddr udp:XXXX     <- trap receive port (default:161)
+
+
+##### MODIFY SNMPTRAPD START SCRIPT #################
+modify start script argument to "-Le -On -n  -p /var/run/snmptrapd.pid"
+[user@cacti]$ sudo /etc/init.d/snmptrapd start
+or
+[user@cacti]$ sudo snmptrapd -Le -On -n  -p /var/run/snmptrapd.pid
+
+
+##### EXTRACT haruca.tar.gz #################
+[user@cacti]$ cd /YOUR/CACTI/DIRECTORY/plugins
+[user@cacti plugins]$ tar zxvf haruca.[version].tar.gz
+
+
+##### MODIFY INSTALLED CACTI PATH ############
+[user@cacti plugins]$ cd haruca
+[user@cacti haruca]$ vi bin/haruca.pm
+#$main::dir_base_cacti = "/usr/share/cacti/";
+$main::dir_base_cacti = "/YOUR/CACTI/DIRECTORY/";
+
+
+##### SET symbolic link haruca.pm TO perl @INC DIRECTORY #####
+[user@cacti haruca]$ sudo ln -s /YOUR/CACTI/DIRECTORY/plugins/haruca/bin/haruca.pm /usr/lib/perl5/
+
+##### SET max_allowed_packet size of MySQL parametor #####
+[user@cacti haruca]$ vi /etc/my.cnf
+------
+[mysqld]
+max_allowed_packet=16MB
+------
+[user@cacti haruca]$ /etc/init.d/mysqld restart
+
+##### SETUP CRON (EXAMPLE FOR PING TIME 5MIN.) ######
+[user@cacti haruca]$ sudo crontab -e
+0   0 * * * perl  /your/cacti/directory/plugins/haruca/bin/sys_daily_report.pl > /dev/null 2>&1
+*/5 * * * * perl  /your/cacti/direcotry/plugins/haruca/bin/sys_get_rtt.pl      > /dev/null 2>&1 
+
+##### Download Vendor Code ######
+[user@cacti haruca]$ wget <a href=http://standards.ieee.org/develop/regauth/oui/oui.txt target=_blank>http://standards.ieee.org/develop/regauth/oui/oui.txt</a> -P /YOUR/CACTI/DIRECTORY/bin
+
+##### Download ipcalc.pl ######
+[user@cacti haruca]$ wget <a href=http://jodies.de/ipcalc-archive/ipcalc-0.41/ipcalc target=_blank>http://jodies.de/ipcalc-archive/ipcalc-0.41/ipcalc</a> -P /YOUR/CACTI/DIRECTORY/bin/ipcalc.pl

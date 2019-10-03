@@ -1,0 +1,58 @@
+#!/usr/bin/perl
+
+use haruca;
+use strict;
+my ( $address1 ,$address2 ,$buf ,$buf_adrs ,$buf_mask ,$line);
+my ($oct01 ,$oct02 ,$oct03 ,$oct04 ,$result ,$tmp);
+my (@adrss ,@masks ,@tmps);
+
+ 
+if(($ARGV[0] eq "")||($ARGV[1] eq "")){
+  print "usage : $0 ADDRESS1 ADDRESS2\n";
+  exit;
+}
+
+$address1 = $ARGV[0];
+$address2 = $ARGV[1];
+
+$result = `${main::binpath}ipcalc.pl $address1 - $address2`;
+$buf_adrs = $buf_mask = $buf = "";
+foreach $line (split(/\n/,$result)){
+  if($line =~ /deaggregate/){ next; }
+  $buf_adrs = (split(/\//,$line))[0];
+  $buf_mask = (split(/\//,$line))[1];
+  $buf_mask = sprintf("%032b",2**$buf_mask);
+  @masks = split(//,$buf_mask);
+  foreach(@masks){
+    if($_ eq "1"){ last; }
+    $_ = "1";
+  }
+
+  $tmp = "";
+  foreach(reverse @masks){
+    $tmp .= $_;
+  }
+  if($tmp eq "11111111111111111111111111111111"){
+    $tmp = "00000000000000000000000000000000";
+  }
+
+  $oct01 = substr($tmp, 0,8);
+  $oct02 = substr($tmp, 8,8);
+  $oct03 = substr($tmp,16,8);
+  $oct04 = substr($tmp,24,8);
+
+  $tmp = oct("0b".$oct01) . "." .  oct("0b".$oct02) . "." .  oct("0b".$oct03) . "." .  oct("0b".$oct04)  ;
+
+  @adrss = split(/\./,$buf_adrs);
+  @tmps  = split(/\./,$tmp);
+
+  $buf .= sprintf("%3s.%3s.%3s.%3s : %3s.%3s.%3s.%3s\n",$adrss[0], $adrss[1], $adrss[2], $adrss[3], $tmps[0], $tmps[1], $tmps[2], $tmps[3]);
+
+  #$buf .= $buf_adrs . " " . $tmp . "\n";
+}
+
+print $buf;
+
+exit;
+
+

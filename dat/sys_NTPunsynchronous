@@ -1,0 +1,36 @@
+#!/usr/bin/perl
+
+use haruca;
+use strict;
+
+haruca::prt_logdate("SYS_NTPSYNCHRONOUS START");
+ 
+
+my ($hostname,$result,$date,$cmd,$options,$dir);
+
+$cmd = "show ntp status";
+$options = "| egrep unsynchronized ";
+
+
+$dir = $0;
+$dir =~ s/sys_//g;
+system("rm -f $dir/*");
+
+foreach $hostname (split(/\n/,`${main::binpath}search . -h`)){
+  $hostname =~ s/\ +//g;
+
+  $result = `${main::binpath}router $hostname $cmd $options `;
+
+  if($result){
+    $date = haruca::get_localtime();
+    open(FILE,"> $dir/${hostname}-$date");
+    print FILE $result;
+    close(FILE);
+  }
+  
+}
+
+haruca::prt_logdate("SYS_NTPSYNCHRONOUS END");
+
+exit;
+

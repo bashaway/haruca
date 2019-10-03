@@ -1,0 +1,50 @@
+#!/usr/bin/perl
+
+use haruca;
+use strict;
+
+my @hosts;
+my ($hostname,$ipaddress,$cmd,$result);
+my %adrs;
+
+haruca::get_args();
+
+if($ARGV[0] eq ""){
+  while(<STDIN>){
+    push(@hosts,(split(/\ \ */,((split(/\n/,$_))[0])))[0]);
+    $hostname  = (split(/\ \ */,((split(/\n/,$_))[0])))[0];
+    $ipaddress = (split(/\ \ */,((split(/\n/,$_))[0])))[1];
+    $adrs{$hostname} = $ipaddress;
+  }
+}else{
+  if($main::opts[0] =~ /ip/){
+    while(<STDIN>){
+      chomp($_);
+      push(@hosts,$_);
+      $adrs{$_} = $_;
+    }
+  }else{
+    print "ERROR\n";
+    exit;
+  }
+}
+
+
+while(1){
+  foreach(@hosts){
+    $cmd = $main::pingpath1 . $adrs{$_};
+    $result = `$cmd`;
+
+    if($result =~ /100% packet loss/){
+      $result = "X";
+    }else{
+      $result = "O";
+    }
+
+    printf("%20s %s\n",$_,$result);
+  }
+  printf("\x1b[%dA",$#hosts+1);
+}
+
+
+exit;

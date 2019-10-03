@@ -1,0 +1,156 @@
+#!/usr/bin/perl
+
+use haruca;
+use DBI;
+use strict;
+
+my ($sql, $sth);
+my ($disabled,$host_id, $field_name, $field_value, $snmp_index, $description, $hostname, $ifindex, $ifname, $check, $hwadrs, $flg);
+my (@ifdescrs, @ifaliases, @hostnames, @hws);
+my (%tmp, %info);
+
+haruca::get_args();
+if($#main::args == -1){
+  print "usage : $0 keyword [ -nosh | -a ]\n";
+  print " -nosh : print no shutdown interface.\n";
+  print " -a    : print address assigned interface.\n";
+  exit;
+}
+
+my $dbh = haruca::connect_db();
+$sql  = "select disabled,field_name,field_value,snmp_index,host.description from host_snmp_cache ";
+$sql .= " inner join host on host_snmp_cache.host_id = host.id";
+
+$sth = $dbh->prepare($sql);
+$sth->execute;
+$sth->bind_columns(undef,\($disabled,$field_name,$field_value,$snmp_index,$description));
+
+while ($sth->fetch) {
+  if($disabled eq "on"){next;}
+  if($field_name =~ /ifAlias/){
+    $info{$description}{$snmp_index}{$field_name} = $field_value;
+  }elsif($field_name =~ /ifDescr/){
+    $info{$description}{$snmp_index}{$field_name} = $field_value;
+  }elsif($field_name =~ /ifIP/){
+    $info{$description}{$snmp_index}{$field_name} = $field_value;
+  }elsif($field_name =~ /ifOperStatus/){
+    if($field_value =~ /Up/){
+      $field_value = "O";
+    }else{
+      $field_value = "X";
+    }
+    $info{$description}{$snmp_index}{$field_name} = $field_value;
+  }elsif($field_name =~ /ifHwAddr/){
+    $hwadrs = $field_value;
+    $hwadrs =~ s/://g;
+    @hws = split(//,$hwadrs);
+    $hwadrs  = $hws[0].$hws[1].$hws[2].$hws[3].".";
+    $hwadrs .= $hws[4].$hws[5].$hws[6].$hws[7].".";
+    $hwadrs .= $hws[8].$hws[9].$hws[10].$hws[11];
+    $info{$description}{$snmp_index}{$field_name} = lc($hwadrs);
+  }else{
+    next;
+  }
+}
+
+$dbh->disconnect;
+
+
+foreach $hostname (sort keys(%info)){
+  foreach $ifindex (sort keys(%{$info{$hostname}})){
+    # チェック用の文字列作成
+    $check  = "$hostname,$info{$hostname}{$ifindex}{'ifOperStatus'},";
+    $check .= "$info{$hostname}{$ifindex}{'ifDescr'},$info{$hostname}{$ifindex}{'ifIP'},";
+    $check .= "$info{$hostname}{$ifindex}{'ifAlias'},$info{$hostname}{$ifindex}{'ifHwAddr'}";
+
+    # チェック文字列に引数の文字列が含まれていない場合は対象外とする。
+    $flg = 0;
+    foreach(@main::args){
+      if($check =~ /$_/i){
+        $flg = 1;
+      }
+    }
+
+    #print @main::args;
+    #if(($#main::args != -1)&&($flg == 0)){next;}
+    if($flg == 0){next;}
+
+    if(grep(/^nosh$/,@main::opts)){
+      if($info{$hostname}{$ifindex}{'ifOperStatus'} eq "X"){ next; }
+    }
+    
+    if(grep(/^a$/,@main::opts)){
+      if($info{$hostname}{$ifindex}{'ifIP'} eq ""){ next; }
+    }
+
+    if(grep(/^under$/,@main::opts)){
+      $info{$hostname}{$ifindex}{'ifAlias'} =~ s/\ /_/g;
+    }
+
+    if($info{$hostname}{$ifindex}{'ifDescr'} =~ /null/i){next;}
+    
+    $info{$hostname}{$ifindex}{'ifDescr'} =~ s/-.*802.1q..*//ig; 
+
+
+    # 情報整理
+    $tmp{$hostname}{$info{$hostname}{$ifindex}{'ifDescr'}}{'ifOperStatus'} = $info{$hostname}{$ifindex}{'ifOperStatus'};
+    $tmp{$hostname}{$info{$hostname}{$ifindex}{'ifDescr'}}{'ifDescr'} = $info{$hostname}{$ifindex}{'ifDescr'};
+    $tmp{$hostname}{$info{$hostname}{$ifindex}{'ifDescr'}}{'ifIP'} = $info{$hostname}{$ifindex}{'ifIP'};
+    $tmp{$hostname}{$info{$hostname}{$ifindex}{'ifDescr'}}{'ifAlias'} = $info{$hostname}{$ifindex}{'ifAlias'};
+    $tmp{$hostname}{$info{$hostname}{$ifindex}{'ifDescr'}}{'ifHwAddr'} = $info{$hostname}{$ifindex}{'ifHwAddr'};
+    $tmp{$hostname}{$info{$hostname}{$ifindex}{'ifDescr'}}{'ifIndex'} = $ifindex;
+    push(@hostnames,$hostname);
+    push(@ifdescrs,$info{$hostname}{$ifindex}{'ifDescr'});
+    push(@ifaliases,$info{$hostname}{$ifindex}{'ifAlias'});
+  }
+}
+
+
+my $hostname_max = haruca::get_max_len(@hostnames);
+my $descr_max = haruca::get_max_len(@ifdescrs);
+my $alias_max = haruca::get_max_len(@ifaliases);
+my $offset = 2;
+my $prt_hostname;
+my $prt_status;
+my $prt_descr;
+my $prt_ip;
+my $prt_alias;
+my $prt_hwaddr;
+my $prt_ifindex;
+
+foreach $hostname (sort keys(%tmp)){
+  foreach $ifname (haruca::ifsort(keys(%{$tmp{$hostname}}))){
+
+
+    $prt_hostname = haruca::len_form($hostname,($hostname_max+$offset),"right");
+    $prt_status   = "$tmp{$hostname}{$ifname}{'ifOperStatus'}"." "x$offset;
+    $prt_descr    = haruca::len_form($tmp{$hostname}{$ifname}{'ifDescr'},($descr_max+$offset),"right");
+    $prt_ip       = sprintf("%-15s",$tmp{$hostname}{$ifname}{'ifIP'})." "x$offset;
+    $prt_alias    = haruca::len_form($tmp{$hostname}{$ifname}{'ifAlias'},($alias_max+$offset),"right");
+    $prt_hwaddr   = sprintf("%-17s",$tmp{$hostname}{$ifname}{'ifHwAddr'})." "x$offset;
+    $prt_ifindex  = sprintf("ifindex:%-3s",$tmp{$hostname}{$ifname}{'ifIndex'})." "x$offset;
+
+    if($prt_descr =~ /^unrouted/){next;}
+    if($prt_descr =~ /^\ +$/){next;}
+
+    print "$prt_hostname";
+
+    if(!grep(/^h$/,@main::opts)){
+      print "$prt_status";
+      print "$prt_descr";
+      if($prt_ip =~ /^\ *$/){ $prt_ip =~ s/\ /-/; }
+      print "$prt_ip";
+      if($prt_alias =~ /^\ *$/){ $prt_alias =~ s/\ /-/; }
+      print "$prt_alias";
+      print "$prt_hwaddr";
+      print "$prt_ifindex";
+    }
+
+    print "\n";
+
+  }
+}
+
+
+exit;
+

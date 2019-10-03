@@ -1,0 +1,62 @@
+#!/usr/bin/perl
+
+use haruca;
+use strict;
+
+my ($mac,$name);
+my %oui;
+my @oui_dats;
+
+open(FILE, "${main::binpath}oui.txt") or die;
+@oui_dats = <FILE>;
+close(FILE);
+
+foreach(@oui_dats){
+  if($_ !~ /\(base 16\)/){next;}
+  $_ =~ s/\(base 16\)//g;
+  $_ =~ s/\t//g;
+  $mac = substr($_,0,6);
+  chomp($mac);
+
+  $mac =~ s/\r//g;
+
+  $mac = lc $mac;
+  $name = substr($_,7);
+  $name =~ s/\ \ */ /g;
+  $name =~ s/^\ //g;
+  chomp($name);
+
+  $name =~ s/\r//g;
+
+  $name = substr($name,0,17);
+  $name .= "....................";
+  $name = substr($name,0,20);
+  $name =~ s/\ /_/g;
+  $oui{$mac} = $name;
+}
+
+
+while(<STDIN>){
+  if($_ =~ /\r\n$/){
+    $_ =~ s/\r\n/\n/g;
+  }
+
+  if($_ =~ /([0-9a-f]{4}\.[0-9a-f]{4}\.[0-9a-f]{4})/){
+    $mac = $1;
+    $mac =~ s/\.//g;
+    $mac = substr($mac,0,6);
+    $mac = lc $mac;
+
+    if($oui{$mac}){
+      $name = $oui{$mac};
+    }else{
+      $name = "....................";
+    }
+    
+    print "$name $_";
+  }
+
+}
+
+exit;
+

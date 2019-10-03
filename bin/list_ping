@@ -1,0 +1,36 @@
+#!/usr/bin/perl
+
+use strict;
+use haruca;
+use DBI;
+my ($result,$ip,$ret);
+my @hosts;
+my $dbh = haruca::connect_db();
+
+while(<STDIN>){
+  push(@hosts,(split(/\ \ */,((split(/\n/,$_))[0])))[0]);
+}
+
+haruca::get_args();
+
+foreach(@hosts){
+  if($main::opts[0] =~ /rapid/){
+    $result = haruca::getrtt_rapid($_);
+    $ip = $dbh->selectrow_array("select hostname from host where description = '$_'");
+    $ret =  "$_($ip)$main::delim$result\n";
+  }elsif($main::opts[0] =~ /ip/){
+    $result = haruca::getrtt_ip($_);
+    $ret =  "$_$main::delim$result\n";
+  }else{
+    $result = haruca::getrtt($_);
+    $ip = $dbh->selectrow_array("select hostname from host where description = '$_'");
+    $ret =  "$_($ip)$main::delim$result\n";
+  }
+
+  print $ret;
+}
+
+$dbh->disconnect;
+
+exit;
+
