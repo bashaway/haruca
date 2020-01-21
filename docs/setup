@@ -50,7 +50,7 @@ max_allowed_packet=16MB
 */5 * * * * perl  /your/cacti/direcotry/plugins/haruca/bin/sys_get_rtt.pl      > /dev/null 2>&1 
 
 ##### Download Vendor Code ######
-[user@cacti haruca]$ wget <a href=http://standards.ieee.org/develop/regauth/oui/oui.txt target=_blank>http://standards.ieee.org/develop/regauth/oui/oui.txt</a> -P /YOUR/CACTI/DIRECTORY/bin
+[user@cacti haruca]$ wget <a href=http://standards.ieee.org/develop/regauth/oui/oui.txt target=_blank>http://standards.ieee.org/develop/regauth/oui/oui.txt</a> -O /YOUR/CACTI/DIRECTORY/bin/oui.txt
 
 ##### Download ipcalc.pl ######
-[user@cacti haruca]$ wget <a href=http://jodies.de/ipcalc-archive/ipcalc-0.41/ipcalc target=_blank>http://jodies.de/ipcalc-archive/ipcalc-0.41/ipcalc</a> -P /YOUR/CACTI/DIRECTORY/bin/ipcalc.pl
+[user@cacti haruca]$ wget <a href=http://jodies.de/ipcalc-archive/ipcalc-0.41/ipcalc target=_blank>http://jodies.de/ipcalc-archive/ipcalc-0.41/ipcalc</a> -O /YOUR/CACTI/DIRECTORY/bin/ipcalc.pl
