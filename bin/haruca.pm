@@ -28,6 +28,7 @@ $main::ping_timeout = 3;
 
 $main::basepath       = "${main::dir_base_cacti}plugins/haruca/";
 $main::datpath        = "${main::basepath}dat/";
+$main::datoldpath     = "${main::basepath}dat/old/";
 $main::binpath        = "${main::basepath}bin/";
 $main::etcpath        = "${main::basepath}etc/";
 $main::logpath        = "${main::basepath}log/haruca.log";

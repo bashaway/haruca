@@ -237,7 +237,7 @@ function show_statuscheck(){
     print "</center>\n";
     print `{$perlpath} {$binpath}sys_statuscheck.pl `;
   }else{
-    #$str_buf = file_get_contents("{$datpath}OldLog/{$_REQUEST['date']}");
+    #$str_buf = file_get_contents("{$datoldpath}{$_REQUEST['date']}");
     #print $str_buf;
 
     $sql = "select dayname({$_REQUEST['date']}) as dayname";
@@ -254,7 +254,7 @@ function show_statuscheck(){
     }
 
     //圧縮ファイルを開く
-    $zd = gzopen("{$datpath}OldLog/{$_REQUEST['date']}.gz", "r");
+    $zd = gzopen("{$datoldpath}{$_REQUEST['date']}.gz", "r");
     $str_buf = gzread($zd, 1000000);
     gzclose($zd);
 
@@ -278,7 +278,7 @@ function show_statuscheckold(){
 
   #ファイルリスト取得
   $files = array();
-  $dir = opendir("{$datpath}OldLog");
+  $dir = opendir("{$datoldpath}");
   while(($file = readdir($dir)) !== FALSE){
     #if(($file != ".")&&($file != "..")){
     if(preg_match("/\d{8}\.gz/",$file)){

@@ -68,7 +68,7 @@ $result = `cat ${main::tmppath}$file | gzip - -c`;
 ($sec,$min,$hour,$mday,$mon,$year,$wday,$yday,$isdst)=localtime(time);
 $savefile = sprintf("%04d%02d%02d.gz",$year+1900,$mon+1,$mday);
 
-open(FILE , ">${main::datpath}OldLog/$savefile");
+open(FILE , ">${main::datoldpath}$savefile");
 print FILE $result;
 close(FILE);
 

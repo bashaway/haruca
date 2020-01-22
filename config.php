@@ -9,6 +9,7 @@ $haruca_tab = TRUE;
 $basepath = getcwd()."/";
 $binpath = getcwd()."/bin/";
 $datpath = getcwd()."/dat/";
+$datoldpath = getcwd()."/dat/old/";
 $tmpimgpath = getcwd()."/images/haruca_";
 $tmppath = "/tmp/haruca_";
 $tmpdir  = "/tmp/";
