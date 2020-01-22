@@ -130,7 +130,7 @@ sub get_cisco_info{
 
   $result = `${main::binpath}router $hostname show version`;
 
-  if($result =~/${main::no_host_info_str}/){return;}
+  if($result =~/${main::not_set_pass}/){return;}
 
   foreach(split(/\n/,$result)){
     if($_ =~ /[Cc]isco\ (.+)\ (\(.+\)).+bytes of memory.$/){$model = (split(/\(/,$_))[0]; $model =~ s/[Cc]isco\ //g; $model =~ s/\ $//g; }

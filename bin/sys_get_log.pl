@@ -106,6 +106,7 @@ sub get_log_core{
     return 0;
   }
 
+
   # 新ログ取得
   if($status eq "fail"){
     #pingが通っていなかった場合はすべての取得ログをping_failとする。
@@ -113,9 +114,10 @@ sub get_log_core{
     haruca::prt_logdate("SYS_GET_LOG_FAIL $hostname");
   }else{
 
+    # ログ取得を試行し、失敗の場合は３回まで繰り返し試行する
     $new_values_all = "";
     foreach( 1 .. 3 ){
-      $new_values_all = `${main::binpath}router $hostname $cmd 2> /dev/null`;
+      $new_values_all = `${main::binpath}router '$hostname' $cmd 2> /dev/null`;
       if($new_values_all){
         last;
       }

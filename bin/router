@@ -8,7 +8,7 @@ use DBI;
 
 
 my (@hosts, @cmds, @results);
-my ($id,$cmd, $num, $fname, $one, $dbh, $sql, $hostname, $address, $chk_file_arg, $result, $filename, $alert_stdin, $sth,$disabled);
+my ($id,$cmd, $num, $fname, $one, $dbh, $sql, $hostname, $address, $chk_file_arg, $result, $filename, $alert_stdin, $sth,$disabled,$categorycode);
 
 # ファイル名の読み込み
 if($#ARGV == -1){
@@ -50,13 +50,15 @@ if($#ARGV == -1){
 $filename = haruca::get_args();
 $dbh = haruca::connect_db();
 
+
+# 引数でホスト名が与えられた場合の処理
 if(!grep(/stdin/,@main::opts)){
-  $sql  = "select description,host.id from host inner join plugin_haruca_host on host.id = plugin_haruca_host.id ";
+  $sql  = "select description,host.id,categorycode from host inner join plugin_haruca_host on host.id = plugin_haruca_host.id ";
   $sql .= " where host.description = '".@main::args[0]."' and host.disabled != 'on'";
 
   $sth = $dbh->prepare($sql);
   $sth->execute;
-  $sth->bind_columns(undef,\($hostname,$id));
+  $sth->bind_columns(undef,\($hostname,$id,$categorycode));
   if(!$sth->fetch){
     #単一ホストの場合はホスト名の入力ミスと考えられる
     print "HOSTNAME : ".@main::args[0]." was not found in database.\n";
@@ -64,7 +66,14 @@ if(!grep(/stdin/,@main::opts)){
     $sth->finish;
     $dbh->disconnect;
     exit;
+  }elsif($categorycode == 1){
+    #categorycode=1 は SNMPONLY固定なので、ここで終了
+    $sth->finish;
+    $dbh->disconnect;
+    print $main::not_set_pass."\n";
+    exit;
   }
+
   $sth->finish;
 
 }
@@ -77,7 +86,7 @@ if($#main::stdin != -1){
     $one = (split(/\ \ */,((split(/\n/,$_))[0])))[0];
 
     $sql  = "select description from host inner join plugin_haruca_host on host.id = plugin_haruca_host.id ";
-    $sql .= " where host.description = '$one' or host.hostname = '$one'";
+    $sql .= " where categorycode != 1 and (host.description = '$one' or host.hostname = '$one')";
 
     $sth = $dbh->prepare($sql);
     $sth->execute;
@@ -116,7 +125,7 @@ if($#main::stdin != -1){
 }else{
   $one = shift(@main::args);
   $sql  = "select description from host inner join plugin_haruca_host on host.id = plugin_haruca_host.id ";
-  $sql .= " where host.description = '$one' or host.hostname = '$one'";
+  $sql .= " where categorycode != 1 and (host.description = '$one' or host.hostname = '$one')";
 
   $sth = $dbh->prepare($sql);
   $sth->execute;
@@ -281,8 +290,8 @@ sub cmd{
   $sth->finish;
   $dbh->disconnect;
 
-  if($vtypass eq ""){
-    return $main::no_host_info_str."\n";
+  if($vtypass eq "" || $categoryname eq "SNMPONLY"){
+    return $main::not_set_pass."\n";
   }
 
   $host_substr = substr($host,0,16);

@@ -10,7 +10,6 @@ my ($hostname,$result,$date,$cmd,$options,$dir);
 $cmd = "show int status";
 $options = "| grep err-disabled";
 
- 
 
 $dir = $0;
 $dir =~ s/sys_//g;
@@ -19,10 +18,10 @@ system("rm -f $dir/*");
 foreach $hostname (split(/\n/,`${main::binpath}search . -h`)){
   $hostname =~ s/\ +//g;
 
-  $result = `${main::binpath}router $hostname $cmd $options `;
+  $result = `${main::binpath}router '$hostname' $cmd $options `;
 
   if($result){
-    $result = `${main::binpath}router $hostname show int status err-disabled`;
+    $result = `${main::binpath}router '$hostname' show int status err-disabled`;
     $date = haruca::get_localtime();
     open(FILE,"> $dir/${hostname}-$date");
     print FILE $result;

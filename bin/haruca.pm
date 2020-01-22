@@ -44,7 +44,7 @@ $main::delim_line = "------------------------------=-=-\n";
 $main::noinfo             = "### no information ###";
 $main::ping_fail_str      = "### ping error ###";
 $main::unknown_error_str  = "### unknown error ###";
-$main::no_host_info_str   = "### not in list ###";
+$main::not_set_pass       = "### not set password ###";
 $main::msg_error          = "### error ###";
 $main::not_update_str     = "### not update ###";
 

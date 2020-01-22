@@ -45,6 +45,12 @@ max_allowed_packet=16MB
 [user@cacti haruca]$ /etc/init.d/mysqld restart
 
 ##### SETUP CRON (EXAMPLE FOR PING TIME 5MIN.) ######
+[user@cacti haruca]$ sudo vi /etc/cron.d/cacti
+0   0 * * * apache /usr/bin/perl  /your/cacti/directory/plugins/haruca/bin/sys_daily_report.pl > /dev/null 2>&1
+*/5 * * * * apache /usr/bin/perl  /your/cacti/direcotry/plugins/haruca/bin/sys_get_rtt.pl      > /dev/null 2>&1 
+
+or
+
 [user@cacti haruca]$ sudo crontab -e
 0   0 * * * perl  /your/cacti/directory/plugins/haruca/bin/sys_daily_report.pl > /dev/null 2>&1
 */5 * * * * perl  /your/cacti/direcotry/plugins/haruca/bin/sys_get_rtt.pl      > /dev/null 2>&1 

@@ -17,17 +17,17 @@ system("rm -f $dir/*");
 foreach $hostname (split(/\n/,`${main::binpath}search . -h`)){
   $hostname =~ s/\ +//g;
 
-  $running = `${main::binpath}router $hostname show running`;
+  $running = `${main::binpath}router '$hostname' show running`;
   if(($running eq "")||($running !~ /end\n+$/)){
-    $running = `${main::binpath}router $hostname show running`;
+    $running = `${main::binpath}router '$hostname' show running`;
     if(($running eq "")||($running !~ /end\n+$/)){
       next;
     }
   }
 
-  $startup = `${main::binpath}router $hostname show start`;
+  $startup = `${main::binpath}router '$hostname' show start`;
   if(($startup eq "")||($startup !~ /end\n+$/)){
-    $startup = `${main::binpath}router $hostname show start`;
+    $startup = `${main::binpath}router '$hostname' show start`;
     if(($startup eq "")||($startup !~ /end\n+$/)){
       next;
     }

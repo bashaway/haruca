@@ -4,7 +4,6 @@ use haruca;
 use strict;
 
 haruca::prt_logdate("SYS_SESSIONCONTINUOUS START");
- 
 
 my ($hostname,$result,$date,$cmd,$options,$dir);
 
@@ -19,7 +18,7 @@ system("rm -f $dir/*");
 foreach $hostname (split(/\n/,`${main::binpath}search . -h`)){
   $hostname =~ s/\ +//g;
 
-  $result = `${main::binpath}router $hostname $cmd $options `;
+  $result = `${main::binpath}router '$hostname' $cmd $options `;
 
   if($result){
     $date = haruca::get_localtime();
