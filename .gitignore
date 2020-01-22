@@ -3,4 +3,5 @@ ipcalc.pl
 log/*
 dat/old/*
 dat/LastUpdate/*
+dat/*/*
 !.gitkeep
