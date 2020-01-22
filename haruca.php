@@ -229,6 +229,7 @@ function show_statuscheck(){
   global $binpath;
   global $perlpath;
   global $datpath;
+  global $datoldpath;
 
   if(empty($_REQUEST['date'])){
     print "<center>\n";
@@ -275,6 +276,7 @@ function show_statuscheck(){
 ########################################################
 function show_statuscheckold(){
   global $datpath;
+  global $datoldpath;
 
   #ファイルリスト取得
   $files = array();

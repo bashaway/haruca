@@ -17,9 +17,21 @@ system("rm -f $dir/*");
 foreach $hostname (split(/\n/,`${main::binpath}search . -h`)){
   $hostname =~ s/\ +//g;
 
-  $running = `${main::binpath}router '$hostname' show running`;
+
+  $running = `${main::binpath}show run '$hostname'`;
+  $startup = `${main::binpath}show start '$hostname'`;
+
+  #print "CHECK $hostname : ";
+  if(($running =~ /${main::noinfo}/) && ($startup =~ /${main::noinfo}/)){
+      #print " SKIP\n";
+      next;
+  }
+  #print " Diff Check\n";
+
+  if(0){
+  $running = `${main::binpath}router '$hostname' show run`;
   if(($running eq "")||($running !~ /end\n+$/)){
-    $running = `${main::binpath}router '$hostname' show running`;
+    $running = `${main::binpath}router '$hostname' show run`;
     if(($running eq "")||($running !~ /end\n+$/)){
       next;
     }
@@ -32,7 +44,7 @@ foreach $hostname (split(/\n/,`${main::binpath}search . -h`)){
       next;
     }
   }
-
+  }
 
 
   open(FILE,"> ${main::tmppath}running");
@@ -54,7 +66,6 @@ foreach $hostname (split(/\n/,`${main::binpath}search . -h`)){
   $cmd_diff .= " | egrep -v '(Time source is NTP,|Load for five secs)'";
   $cmd_diff .= " | egrep -v '(^[<>]\ *\!|^[<>]\ *$main::delim|Using..*out of..*bytes)'";
   $result = `$cmd_diff`;
-
 
 
   system("rm -f ${main::tmppath}running ${main::tmppath}startup ");

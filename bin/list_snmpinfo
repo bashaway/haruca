@@ -57,10 +57,21 @@ foreach $host (@hosts){
   $sth->execute;
   $sth->bind_columns(undef,\($com_str,$adrs,$snmp_vers));
   $sth->fetch;
+
   if($snmp_vers eq "2"){
    $snmp_vers = "2c";
   }
   $sth->finish;
+
+
+  if($snmp_vers eq "0"){
+    next;
+  }
+
+  if(!haruca::pingcheck_rapid($host)){
+    print $host.$main::delim.$main::delim.$main::delim."\n";
+    next;
+  }
 
   print $host;
 

@@ -2,4 +2,5 @@ oui.txt
 ipcalc.pl
 log/*
 dat/old/*
+dat/LastUpdate/*
 !.gitkeep

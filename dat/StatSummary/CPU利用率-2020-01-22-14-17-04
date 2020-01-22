@@ -1,0 +1,12 @@
+HOSTNAME              5min  1min
+------------------------------------
+Rdc01                   10    12
+Rhq01                    7     9
+Rbranch01                0     0
+VMinfraserv01(radius)     0     0
+VMinfraserv02(dhcp)      0     0
+VMinfraserv03(proxy)     0     0
+VMinfraserv04(syslog)     0     0
+VMinfraserv05(cacti)     0     0
+VMinfraserv06(zabbix)     0     0
+VMinfraserv07(tftp)      0     0
