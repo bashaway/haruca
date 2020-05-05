@@ -3,7 +3,7 @@ Half Ability Router Utility and Config Archives.
 
 ##### INSTALL REQUIRE MODOLES #########################
 CentOS
-[user@cacti]$ sudo yum install perl-DBI perl-DBD-MySQL perl-Net-Telnet
+[user@cacti]$ sudo yum install perl-DBI perl-DBD-MySQL perl-Net-Telnet zip
 [user@cacti]$ perl -MCPAN -e shell
 cpan> install Net::SMTP
 
@@ -19,6 +19,8 @@ modify start script argument to "-Le -On -n  -p /var/run/snmptrapd.pid"
 [user@cacti]$ sudo /etc/init.d/snmptrapd start
 or
 [user@cacti]$ sudo snmptrapd -Le -On -n  -p /var/run/snmptrapd.pid
+
+
 
 
 ##### EXTRACT haruca.tar.gz #################

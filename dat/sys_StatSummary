@@ -18,7 +18,7 @@ system("rm -f $dir/*");
 $today = `date \'+%Y-%m-%d\'`;
 chomp($today);
 
-$cmd = "${main::binpath}search . | ${main::binpath}list_snmpinfo ";
+$cmd = "$main::config_haruca{'binpath'}search . | $main::config_haruca{'binpath'}list_snmpinfo ";
 
 $result = `$cmd --cpu `;
 $buf = sprintf("%-20s %5s %5s\n","HOSTNAME","5min","1min");

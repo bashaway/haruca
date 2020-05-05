@@ -54,14 +54,14 @@ $dbh = haruca::connect_db();
 # 引数でホスト名が与えられた場合の処理
 if(!grep(/stdin/,@main::opts)){
   $sql  = "select description,host.id,categorycode from host inner join plugin_haruca_host on host.id = plugin_haruca_host.id ";
-  $sql .= " where host.description = '".@main::args[0]."' and host.disabled != 'on'";
+  $sql .= " where host.description = '".$main::args[0]."' and host.disabled != 'on'";
 
   $sth = $dbh->prepare($sql);
   $sth->execute;
   $sth->bind_columns(undef,\($hostname,$id,$categorycode));
   if(!$sth->fetch){
     #単一ホストの場合はホスト名の入力ミスと考えられる
-    print "HOSTNAME : ".@main::args[0]." was not found in database.\n";
+    print "HOSTNAME : ".$main::args[0]." was not found in database.\n";
     print "If you want list from STDIN , when you requires option \"-\" or \"--stdin\"\n";
     $sth->finish;
     $dbh->disconnect;
@@ -70,7 +70,7 @@ if(!grep(/stdin/,@main::opts)){
     #categorycode=1 は SNMPONLY固定なので、ここで終了
     $sth->finish;
     $dbh->disconnect;
-    print $main::not_set_pass."\n";
+    print $main::config_haruca{'not_set_pass'}."\n";
     exit;
   }
 
@@ -181,24 +181,25 @@ $dbh->disconnect;
 @cmds = split(/,/,$cmd);
 $cmd = "";
 foreach(@cmds){
-  $_ =~ s/^\ \ *//g;
+  #$_ =~ s/^\ \ *//g;
+  if($_ =~ /^\ *$/){next;}
   if(grep(/config/,@main::opts)){
     $cmd .= $_ . ", ";
   }elsif(
-    ($_ =~ /^sh/)||
-    ($_ =~ /^ping/)||
-    ($_ =~ /^traceroute/)||
-    ($_ =~ /^clear coun/)||
-    ($_ =~ /^clear cry/)||
-    ($_ =~ /^get /)||
-    ($_ =~ /^exe /)||
-    ($_ =~ /^disp/)||
-    ($_ =~ /^copy\ .*/)
+    ($_ =~ /^\ *sh/)||
+    ($_ =~ /^\ *ping/)||
+    ($_ =~ /^\ *traceroute/)||
+    ($_ =~ /^\ *clear coun/)||
+    ($_ =~ /^\ *clear cry/)||
+    ($_ =~ /^\ *get /)||
+    ($_ =~ /^\ *exe /)||
+    ($_ =~ /^\ *disp/)||
+    ($_ =~ /^\ *copy\ .*/)
    ){
     $cmd .= $_ . ", ";
   }
 }
-$cmd =~ s/,\ $//;
+$cmd =~ s/,\ *$//;
 
 
 # メインルーチン
@@ -218,7 +219,7 @@ if(!$#hosts){
     }
 
   }else{
-    print "$hostname : $main::ping_fail_str skip...\n";
+    print "$hostname : $main::config_haruca{'ping_fail_str'} skip...\n";
   }
 }else{
   foreach $hostname (@hosts){
@@ -240,7 +241,7 @@ if(!$#hosts){
       }
 
     }else{
-      print "$hostname : $main::ping_fail_str skip...\n";
+      print "$hostname : $main::config_haruca{'ping_fail_str'} skip...\n";
     }
 
 
@@ -291,7 +292,7 @@ sub cmd{
   $dbh->disconnect;
 
   if($vtypass eq "" || $categoryname eq "SNMPONLY"){
-    return $main::not_set_pass."\n";
+    return $main::config_haruca{'not_set_pass'}."\n";
   }
 
   $host_substr = substr($host,0,16);
@@ -367,6 +368,7 @@ sub cmd_ssh{
     $_ =~ s/^\ +//g;
     $_ =~ s/\ +$//g;
 
+
     $ssh->send($_);
     $buf_tmp = $ssh->read_all(2);
     #$ssh->waitfor("$prompt|\]\\?+\ +\$", $timeout) or die "ssh error";
@@ -383,9 +385,9 @@ sub cmd_ssh{
 
     $buf_tmp =~ s/\r\n/\n/g;
 
-    $buf .= $main::delim_line ;
+    $buf .= $main::config_haruca{'delim_line'}."\n" ;
     $buf .= $_ ."\n";
-    $buf .= $main::delim_line ;
+    $buf .= $main::config_haruca{'delim_line'}."\n" ;
     $buf .= $host."#" . $buf_tmp ."\n";
 
   }
@@ -473,9 +475,9 @@ sub cmd_telnet{
       $line .= $line_tmp;
     }
 
-    $buf .= $main::delim_line ;
+    $buf .= $main::config_haruca{'delim_line'}."\n" ;
     $buf .= $_ . "\n";
-    $buf .= $main::delim_line ;
+    $buf .= $main::config_haruca{'delim_line'}."\n" ;
     $buf .= $host . "#" . $line . "\n";
 
   }

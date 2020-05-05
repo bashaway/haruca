@@ -14,48 +14,30 @@ $dir = $0;
 $dir =~ s/sys_//g;
 system("rm -f $dir/*");
 
-foreach $hostname (split(/\n/,`${main::binpath}search . -h`)){
+foreach $hostname (split(/\n/,`$main::config_haruca{'binpath'}search . -h`)){
   $hostname =~ s/\ +//g;
 
 
-  $running = `${main::binpath}show run '$hostname'`;
-  $startup = `${main::binpath}show start '$hostname'`;
+  $running = `$main::config_haruca{'binpath'}show run '$hostname'`;
+  $startup = `$main::config_haruca{'binpath'}show start '$hostname'`;
 
   #print "CHECK $hostname : ";
-  if(($running =~ /${main::noinfo}/) && ($startup =~ /${main::noinfo}/)){
+  if(($running =~ /$main::config_haruca{'noinfo'}/) && ($startup =~ /$main::config_haruca{'noinfo'}/)){
       #print " SKIP\n";
       next;
   }
   #print " Diff Check\n";
 
-  if(0){
-  $running = `${main::binpath}router '$hostname' show run`;
-  if(($running eq "")||($running !~ /end\n+$/)){
-    $running = `${main::binpath}router '$hostname' show run`;
-    if(($running eq "")||($running !~ /end\n+$/)){
-      next;
-    }
-  }
 
-  $startup = `${main::binpath}router '$hostname' show start`;
-  if(($startup eq "")||($startup !~ /end\n+$/)){
-    $startup = `${main::binpath}router '$hostname' show start`;
-    if(($startup eq "")||($startup !~ /end\n+$/)){
-      next;
-    }
-  }
-  }
-
-
-  open(FILE,"> ${main::tmppath}running");
+  open(FILE,"> $main::config_haruca{'tmppath'}running");
   print FILE $running;
   close(FILE);
   
-  open(FILE,"> ${main::tmppath}startup");
+  open(FILE,"> $main::config_haruca{'tmppath'}startup");
   print FILE $startup;
   close(FILE);
 
-  $cmd_diff  = " diff ${main::tmppath}running ${main::tmppath}startup | egrep '(^<|^>)' ";
+  $cmd_diff  = " diff $main::config_haruca{'tmppath'}running $main::config_haruca{'tmppath'}startup | egrep '(^<|^>)' ";
   $cmd_diff .= " | egrep -v '(^[<>]\ *\$)'";
   $cmd_diff .= " | egrep -v '(^[<>]\ *show)'";
   $cmd_diff .= " | egrep -v '(^[<>]\ *Building)'";
@@ -64,11 +46,11 @@ foreach $hostname (split(/\n/,`${main::binpath}search . -h`)){
   $cmd_diff .= " | egrep -v '(^[<>]\ *$hostname)'";
   $cmd_diff .= " | egrep -v '(#time|secret|community|snmp-server host|password|clock-period|authentication-key)'";
   $cmd_diff .= " | egrep -v '(Time source is NTP,|Load for five secs)'";
-  $cmd_diff .= " | egrep -v '(^[<>]\ *\!|^[<>]\ *$main::delim|Using..*out of..*bytes)'";
+  $cmd_diff .= " | egrep -v '(^[<>]\ *\!|^[<>]\ *$main::config_haruca{'delim'}|Using..*out of..*bytes)'";
   $result = `$cmd_diff`;
 
 
-  system("rm -f ${main::tmppath}running ${main::tmppath}startup ");
+  system("rm -f $main::config_haruca{'tmppath'}running $main::config_haruca{'tmppath'}startup ");
   if($result){
     $date = haruca::get_localtime();
     open(FILE,"> $dir/${hostname}-$date");

@@ -20,7 +20,7 @@ if(($thread_number !~ /^\d+$/)||($thread_number == 0)){
 $dbh->disconnect;
 
 haruca::prt_logdate("SYS_GET_LOG_ALL START");
-my @hosts = split(/\n/,`${main::binpath}search . -hc`);
+my @hosts = split(/\n/,`${main::config_haruca{'binpath'}}search . -hc`);
 
 my $div = ( (@hosts/$thread_number) == int(@hosts/$thread_number) ?  (@hosts/$thread_number) : int((@hosts/$thread_number) + 1) );
 
@@ -76,7 +76,7 @@ sub get_log_core{
   my $hostname  = shift;
   my $hostcode  = shift;
   my $status    = shift;
-  my $file_tmp = `${main::binpath}mkpasswd 10 alnum file`;
+  my $file_tmp = `${main::config_haruca{'binpath'}}mkpasswd 10 alnum file`;
 
   my $dbh = haruca::connect_db();
 
@@ -110,39 +110,43 @@ sub get_log_core{
   # 新ログ取得
   if($status eq "fail"){
     #pingが通っていなかった場合はすべての取得ログをping_failとする。
-    foreach(@cmds){ $new_values{$_} = $main::ping_fail_str; }
+    foreach(@cmds){ $new_values{$_} = $main::config_haruca{'ping_fail_str'}; }
     haruca::prt_logdate("SYS_GET_LOG_FAIL $hostname");
   }else{
 
     # ログ取得を試行し、失敗の場合は３回まで繰り返し試行する
     $new_values_all = "";
     foreach( 1 .. 3 ){
-      $new_values_all = `${main::binpath}router '$hostname' $cmd 2> /dev/null`;
+      $new_values_all = `${main::config_haruca{'binpath'}}router '$hostname' $cmd 2> /dev/null`;
       if($new_values_all){
         last;
       }
     }
 
 
+
     if($new_values_all){
-      @results = split(/${main::delim_line}/,$new_values_all);
+      @results = split(/$main::config_haruca{'delim_line'}\n/,$new_values_all);
       for($i=1;$i<$#results;$i=$i+2){
         $cmd = $results[$i];
         chomp($cmd);
         $cmd =~ s/\ +$//g;
         $new_values{$cmd} = $results[$i+1];
+
       }
       #print "$new_values{'show tech'}\n";
     }else{
       #なんらかのエラーで返り血がなかったばあいはすべての取得ログをcan't get infoにする
-      foreach(@cmds){ $new_values{$_} = "$main::unknown_error_str"; }
+      foreach(@cmds){ $new_values{$_} = "$main::config_haruca{'unknown_error_str'}"; }
       haruca::prt_logdate("SYS_GET_LOG_FAIL $hostname");
     }
   }
 
+
   # 新ログをDBに放り込んでいく
   foreach(keys(%new_values)){
     chomp($_);
+
 
     # logtypecode 判断
     $logtypecode   = $dbh->selectrow_array("select logtypecode from plugin_haruca_logtype where loggetcmd = \"$_\"");
@@ -155,6 +159,7 @@ sub get_log_core{
     # 旧ログの取得
     $sql  = "select gettime,value from plugin_haruca_log ";
     $sql .= " where hostcode = $hostcode and logtypecode = $logtypecode order by gettime desc ";
+
 
     $sth = $dbh->prepare($sql);
     $sth->execute;
@@ -224,8 +229,8 @@ sub get_log_core{
 
       # 新ログがpingfailの場合はなにもしない。
       # → 常に最新のデータが参照できるようにしなければならないので
-      if( ($new_log_value =~ /$main::ping_fail_str/)||
-          ($new_log_value =~ /$main::unknown_error_str/)){
+      if( ($new_log_value =~ /$main::config_haruca{'ping_fail_str'}/)||
+          ($new_log_value =~ /$main::config_haruca{'unknown_error_str'}/)){
         next;
       }
 
@@ -242,14 +247,14 @@ sub get_log_core{
 
 
       # 新ログを一時ファイルに書き出し
-      $file_new = `${main::binpath}mkpasswd 10 alnum file`;
-      open(FILE,"> ${main::tmppath}$file_new");
+      $file_new = `${main::config_haruca{'binpath'}}mkpasswd 10 alnum file`;
+      open(FILE,"> ${main::config_haruca{'tmppath'}}$file_new");
       print FILE $new_log_value;
       close(FILE);
 
       # 旧ログを一時ファイルに書き出し
-      $file_old = `${main::binpath}mkpasswd 10 alnum file`;
-      open(FILE,"> ${main::tmppath}$file_old");
+      $file_old = `${main::config_haruca{'binpath'}}mkpasswd 10 alnum file`;
+      open(FILE,"> ${main::config_haruca{'tmppath'}}$file_old");
       print FILE $old_log_value;
       close(FILE);
 
@@ -257,7 +262,7 @@ sub get_log_core{
 
       # diffコマンドを用意
       # とりあえずstartupコンフィグ用のdiff文字列
-      $cmd_diff  = " diff ${main::tmppath}$file_old ${main::tmppath}$file_new ";
+      $cmd_diff  = " diff ${main::config_haruca{'tmppath'}}$file_old ${main::config_haruca{'tmppath'}}$file_new ";
       $cmd_diff .= " | egrep '(^<|^>)' | sed \"s/^[<>]\ *//g\" ";
 
 
@@ -275,7 +280,7 @@ sub get_log_core{
         $dbh->do($sql);
       }
 
-      system("rm -f ${main::tmppath}$file_old ${main::tmppath}$file_new");
+      system("rm -f ${main::config_haruca{'tmppath'}}$file_old ${main::config_haruca{'tmppath'}}$file_new");
       # ここまで：差分保存ルーチン
 
     }
@@ -291,14 +296,14 @@ sub compress_text{
   # $text : 圧縮前の文字列
   # $TEXT : 圧縮後の文字列
   my $text = $_[0];
-  my $file_tmp = `${main::binpath}mkpasswd 10 alnum file`;
+  my $file_tmp = `${main::config_haruca{'binpath'}}mkpasswd 10 alnum file`;
   my $result;
 
-  open(FILE,"> ${main::tmppath}$file_tmp");
+  open(FILE,"> ${main::config_haruca{'tmppath'}}$file_tmp");
   print FILE $text;
   close(FILE);
-  $result = `cat ${main::tmppath}$file_tmp | gzip - -c`;
-  system("rm -f ${main::tmppath}$file_tmp");
+  $result = `cat ${main::config_haruca{'tmppath'}}$file_tmp | gzip - -c`;
+  system("rm -f ${main::config_haruca{'tmppath'}}$file_tmp");
 
   return $result;
 }

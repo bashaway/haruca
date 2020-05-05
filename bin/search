@@ -112,14 +112,14 @@ while ($sth->fetch) {
   push(@ioses,$ios);
   push(@hostcodes,$hostcode);
   push(@serials,$serial);
-  $buf  = $hostname       . $main::delim;
-  $buf .= $ipaddress      . $main::delim;
-  $buf .= $model          . $main::delim;
-  $buf .= $ios            . $main::delim;
-  $buf .= $officename     . $main::delim;
-  $buf .= $officeaddress  . $main::delim;
-  $buf .= $hostcode       . $main::delim;
-  $buf .= $serial         . $main::delim;
+  $buf  = $hostname       . $main::config_haruca{'delim'};
+  $buf .= $ipaddress      . $main::config_haruca{'delim'};
+  $buf .= $model          . $main::config_haruca{'delim'};
+  $buf .= $ios            . $main::config_haruca{'delim'};
+  $buf .= $officename     . $main::config_haruca{'delim'};
+  $buf .= $officeaddress  . $main::config_haruca{'delim'};
+  $buf .= $hostcode       . $main::config_haruca{'delim'};
+  $buf .= $serial         . $main::config_haruca{'delim'};
   push(@tmps,$buf);
 }
 
@@ -131,7 +131,7 @@ $loca_max = haruca::get_max_len(@locales);
 $ios_max  = haruca::get_max_len(@ioses);
 $code_max = haruca::get_max_len(@hostcodes);
 
-@array = sort { (split(/$main::delim/,$a))[$main::pos] cmp (split(/$main::delim/,$b))[$main::pos]} @tmps;
+@array = sort { (split(/$main::config_haruca{'delim'}/,$a))[$main::pos] cmp (split(/$main::config_haruca{'delim'}/,$b))[$main::pos]} @tmps;
 
 my $flg_shortopt;
 if(( grep(/category/,@main::opts) && ($#main::opts == 0)) || ( !grep(/category/,@main::opts) && ($#main::opts == -1))){
@@ -152,10 +152,10 @@ foreach(@array){
   $prt_ios  = "";
   $prt_code = "";
   if( $flg_shortopt==0 || (($flg_shortopt==1)&&(grep(/h/,@main::opts)))){
-    $prt_host = haruca::len_form((split(/$main::delim/,$_))[0],($host_max+$offset),"right");
+    $prt_host = haruca::len_form((split(/$main::config_haruca{'delim'}/,$_))[0],($host_max+$offset),"right");
   }
   if( $flg_shortopt==0 || (($flg_shortopt==1)&&(grep(/i/,@main::opts)))){
-    $buf = (split(/$main::delim/,$_))[1];
+    $buf = (split(/$main::config_haruca{'delim'}/,$_))[1];
 
     if($buf =~ /(\d+)\.(\d+)\.(\d+)\.(\d+)/){
       @ip = split(/\./,$buf);
@@ -165,22 +165,22 @@ foreach(@array){
     $prt_iplb = haruca::len_form($buf,($iplb_max+$offset),"right");
   }
   if( $flg_shortopt==0 || (($flg_shortopt==1)&&(grep(/t/,@main::opts)))){
-    $prt_type = haruca::len_form((split(/$main::delim/,$_))[2],($type_max+$offset),"right");
+    $prt_type = haruca::len_form((split(/$main::config_haruca{'delim'}/,$_))[2],($type_max+$offset),"right");
   }
   if( $flg_shortopt==0 || (($flg_shortopt==1)&&(grep(/v/,@main::opts)))){
-    $prt_ios  = haruca::len_form((split(/$main::delim/,$_))[3],($ios_max+$offset),"right");
+    $prt_ios  = haruca::len_form((split(/$main::config_haruca{'delim'}/,$_))[3],($ios_max+$offset),"right");
   }
   if( $flg_shortopt==0 || (($flg_shortopt==1)&&(grep(/n/,@main::opts)))){
-    $prt_name = haruca::len_form((split(/$main::delim/,$_))[4],($name_max+$offset),"right");
+    $prt_name = haruca::len_form((split(/$main::config_haruca{'delim'}/,$_))[4],($name_max+$offset),"right");
   }
   if( $flg_shortopt==0 || (($flg_shortopt==1)&&(grep(/l/,@main::opts)))){
-    $prt_loca = haruca::len_form((split(/$main::delim/,$_))[5],($loca_max+$offset),"right");
+    $prt_loca = haruca::len_form((split(/$main::config_haruca{'delim'}/,$_))[5],($loca_max+$offset),"right");
   }
   if( $flg_shortopt==0 || (($flg_shortopt==1)&&(grep(/c/,@main::opts)))){
-    $prt_code = haruca::len_form((split(/$main::delim/,$_))[6],($code_max+$offset),"left");
+    $prt_code = haruca::len_form((split(/$main::config_haruca{'delim'}/,$_))[6],($code_max+$offset),"left");
   }
   if(grep(/s/,@main::opts)){
-    $prt_code .= haruca::len_form((split(/$main::delim/,$_))[7],14,"left");
+    $prt_code .= haruca::len_form((split(/$main::config_haruca{'delim'}/,$_))[7],14,"left");
   }
 
   if($prt_host =~ /^\ +$/){ $prt_host =~ s/^\ /-/; }

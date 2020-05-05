@@ -21,7 +21,7 @@ my $debug=0;
 my $str_time;
 
 if(!$debug){
-  system("rm -f ${main::datpath}LastUpdate/*");
+  system("rm -f $main::config_haruca{'datpath'}LastUpdate/*");
 }
 
 
@@ -33,7 +33,7 @@ $month{'Oct'} = "10"; $month{'Nov'} = "11"; $month{'Dec'} = "12";
 $inv  = " | grep -v ^! | grep -v ^Using | grep -v clock-period | egrep -v '(^$delim)'";
 $inv .= " | sed 's/\\ \$//g' ";
 
-foreach $result (split(/\n/,`${main::binpath}search . -hc`)){
+foreach $result (split(/\n/,`$main::config_haruca{'binpath'}search . -hc`)){
   $hostname = (split(/\ +/,$result))[0];
   $hostcode = (split(/\ +/,$result))[1];
 
@@ -85,23 +85,23 @@ foreach $result (split(/\n/,`${main::binpath}search . -hc`)){
 
   if(!$conf_prev){
     if($conf_latest){
-      $buf = "${main::not_update_str}\n";
+      $buf = "$main::config_haruca{'not_update_str'}\n";
     }else{
       $buf = "cannot get configuration.\n";
       $update_time = "0000-00-00-00-00-00";
     }
   }else{
-    $file_latest = `${main::binpath}mkpasswd 10 alnum file`;
-    open(FILE,"> ${main::tmppath}$file_latest");
+    $file_latest = `$main::config_haruca{'binpath'}mkpasswd 10 alnum file`;
+    open(FILE,"> $main::config_haruca{'tmppath'}$file_latest");
     print FILE $conf_latest;
     close(FILE);
 
-    $file_prev = `${main::binpath}mkpasswd 10 alnum file`;
-    open(FILE,"| gzip -d - > ${main::tmppath}$file_prev");
+    $file_prev = `$main::config_haruca{'binpath'}mkpasswd 10 alnum file`;
+    open(FILE,"| gzip -d - > $main::config_haruca{'tmppath'}$file_prev");
     print FILE $conf_prev;
     close(FILE);
 
-    $cmd_diff  = " diff ${main::tmppath}$file_prev ${main::tmppath}$file_latest ";
+    $cmd_diff  = " diff $main::config_haruca{'tmppath'}$file_prev $main::config_haruca{'tmppath'}$file_latest ";
     $cmd_diff .= " | egrep '(^<|^>)' ";
     $cmd_diff .= " | egrep -v '(#time|secret|community|snmp-server host|password|clock-period|authentication-key)'";
     $cmd_diff .= " | egrep -v '(^[<>]\ \!)'";
@@ -111,8 +111,8 @@ foreach $result (split(/\n/,`${main::binpath}search . -hc`)){
 
     $buf = `$cmd_diff`;
 
-    system("rm -f ${main::tmppath}$file_latest");
-    system("rm -f ${main::tmppath}$file_prev");
+    system("rm -f $main::config_haruca{'tmppath'}$file_latest");
+    system("rm -f $main::config_haruca{'tmppath'}$file_prev");
 
     if($buf){
 
@@ -120,7 +120,7 @@ foreach $result (split(/\n/,`${main::binpath}search . -hc`)){
         print "====== $hostname : $update_time ======\n";
         print $buf;
       }else{
-        open(FILE,"> ${main::datpath}LastUpdate/${hostname}-$update_time");
+        open(FILE,"> $main::config_haruca{'datpath'}LastUpdate/${hostname}-$update_time");
         print FILE $buf;
         close(FILE);
       }

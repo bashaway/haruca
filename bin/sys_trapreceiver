@@ -33,12 +33,12 @@ foreach (@lines){
 }
 
 if($debug_trap){
-  system("echo '-------' >> ${main::tmppath}conf");
+  system("echo '-------' >> ${main::config_haruca{'tmppath'}}conf");
 }
 
 foreach $key (keys %info){
   if($debug_trap){
-    system("echo '$key $info{$key}' >> ${main::tmppath}conf");
+    system("echo '$key $info{$key}' >> ${main::config_haruca{'tmppath'}}conf");
   }
 }
 
@@ -126,7 +126,7 @@ $str_summary =~ s/"//g;
 
 if($str_target ne ""){
 
-  foreach(split(/\n/,`${main::binpath}ipsearch --under $hostname`)){
+  foreach(split(/\n/,`${main::config_haruca{'binpath'}}ipsearch --under $hostname`)){
     if($_ =~ /$str_target/){
       $description = (split(/\ +/,$_))[4];
       $address     = (split(/\ +/,$_))[3];

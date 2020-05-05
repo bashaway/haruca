@@ -32,7 +32,7 @@ if($ARGV[0] eq ""){
 
 while(1){
   foreach(@hosts){
-    $cmd = $main::pingpath1 . $adrs{$_};
+    $cmd = $main::config_haruca{'pingpath1'} . $adrs{$_};
     $result = `$cmd`;
 
     if($result =~ /100% packet loss/){

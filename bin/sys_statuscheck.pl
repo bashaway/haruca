@@ -33,9 +33,9 @@ if($lastupdate_period !~ /\d+/){
 
 $buf .= print_daily_check("LastUpdate",$lastupdate_period);
 
-#chdir("${main::datpath}");
+#chdir("${main::config_haruca{'datpath'}}");
 
-foreach(sort glob "${main::datpath}sys_*"){
+foreach(sort glob "${main::config_haruca{'datpath'}}sys_*"){
   $file = (split(/\//,$_))[-1];
   if(-f $_ ){
     if($file =~ /sys_/){
@@ -62,8 +62,14 @@ sub print_daily_check{
   my $buf = "";
 
   #ファイルリスト取得
-  @files = glob "{$main::datpath}$name/*";
-  sort(@files);
+  @files = glob "{$main::config_haruca{'datpath'}}$name/*";
+  if(@files){
+    #print $name."<BR>\n";
+    #foreach(@files){
+    #  print " - $_ <BR>\n";
+    #}
+    sort(@files);
+  }
 
   # LastUpdate Print Routine
   if($name eq "LastUpdate"){
@@ -82,7 +88,11 @@ sub print_daily_check{
 
   }else{
     $buf .= "<h3>$name</H3>\n";
-    sort(@files);
+
+    if(@files){
+      sort(@files);
+    }
+
   }
 
 
@@ -110,7 +120,7 @@ sub print_daily_check{
 
       $buf .= "    <PRE>\n";
 
-      $readfile = "${main::datpath}$name/$file";
+      $readfile = "${main::config_haruca{'datpath'}}$name/$file";
       #print "READFILE : $readfile\n";
       open(FILE, "$readfile");
       @str_buf = <FILE>;

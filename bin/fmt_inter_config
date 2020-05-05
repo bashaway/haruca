@@ -64,20 +64,20 @@ foreach(haruca::ifsort(keys %values)){
     }
   }
   if(!$search_type){
-    print $main::delim_line;
+    print $main::config_haruca{'delim_line'}."\n";
     print "interface $_\n";
     print $values{$_};
   }else{
     if($_ =~ /^$search_type/i){
       if(($search_num eq "")||(($search_num ne "") && ($_ =~ /$search_num$/i))){
-        print $main::delim_line;
+        print $main::config_haruca{'delim_line'}."\n";
         print "interface $_\n";
         print $values{$_};
       }
     }
   }
 }
-print $main::delim_line;
+print $main::config_haruca{'delim_line'}."\n";
 
 exit;
 

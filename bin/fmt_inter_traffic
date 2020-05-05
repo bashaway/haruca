@@ -11,7 +11,7 @@ my ($total_bps_in,$total_bps_out,$total_pps_in,$total_pps_out);
 $desc_len = 22;
 
 while(<STDIN>){
-  if($_ =~ /$main::delim/){next;}
+  if($_ =~ /$main::config_haruca{'delim'}/){next;}
   if($_ =~ /..*>sh..*int..*/){
     $hostname = (split(/>/,$_))[0];
     print "$hostname\n";
@@ -30,7 +30,7 @@ while(<STDIN>){
     $int =~ s/Port-channel/Po/g;
     $int =~ s/Loopback/LB/g;
 
-    $int .= $main::delim.$hostname;
+    $int .= $main::config_haruca{'delim'}.$hostname;
     push(@ints,$int);
     if($_ =~ /administ/){
       $$int{stat} = " ";
@@ -106,7 +106,7 @@ while(<STDIN>){
 
 printf("%-2s %-12s %-${desc_len}s %14s %12s %14s %12s %12s %12s %12s %12s %12s\n","*s","INT","DESCRIPTION","IN(bps)","IN(pps)","OUT(bps)","OUT(pps)","error_in","error_out","drop_in","drop_out","crc","col");
 foreach $int (@ints){
-  $hostname = (split(/$main::delim/,$int))[1];
+  $hostname = (split(/$main::config_haruca{'delim'}/,$int))[1];
 
   if($host_prev ne $hostname){
     $host_prev = $hostname;
@@ -131,7 +131,7 @@ foreach $int (@ints){
 
   $desc =~ s/\ /_/g;
 
-  $int = (split(/$main::delim/,$int))[0];
+  $int = (split(/$main::config_haruca{'delim'}/,$int))[0];
   printf("%-2s %-12s %-${desc_len}s %14s %12d %14s %12d %12d %12d %12d %12d %12d\n",$stat,$int,$desc,$bps_in,$pps_in,$bps_out,$pps_out,$error_in,$error_out,$drop_in,$drop_out,$crc,$col);
   next;
 

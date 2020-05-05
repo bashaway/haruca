@@ -1,277 +1,344 @@
 <?php
 
-function haruca_tabs() {
   global $config;
+  global $config_haruca;
+  global $database_type, $database_default, $database_hostname;
+  global $database_username, $database_password, $database_port, $database_ssl;
 
-  /* present a tabbed interface */
-  if(api_user_realm_auth('haruca_config')) {
-    $tabs = array(
-      'show'    => __('show', 'haruca'),
-      'tool'    => __('tool', 'haruca'),
-      'manage'  => __('manage', 'haruca'),
-      'manual'  => __('manual', 'haruca')
-    );
-  }else{
-    $tabs = array(
-      'show'    => __('show', 'haruca'),
-      'tool'    => __('tool', 'haruca'),
-      'manual'  => __('manual', 'haruca')
-    );
+  $config_haruca['ping_timeout'] = 3;
+  $config_haruca['pingpath1'] = "/bin/ping -c 1 -w ".$config_haruca['ping_timeout']." ";
+  $config_haruca['pingpath2'] = "/bin/ping -c 2 -w ".$config_haruca['ping_timeout']." ";
+  $config_haruca['sendmailpath'] = "/usr/sbin/sendmail";
+  $config_haruca['delim'] = "<<>>";
+  $config_haruca['delim_line'] = "-<->----------------------------<->-";
+  $config_haruca['noinfo']             = "### no information ###";
+  $config_haruca['ping_fail_str']      = "### ping error ###";
+  $config_haruca['unknown_error_str']  = "### unknown error ###";
+  $config_haruca['not_set_pass']       = "### not set password ###";
+  $config_haruca['msg_error']          = "### error ###";
+  $config_haruca['not_update_str']     = "### not update ###";
+
+  $config_haruca['cactipath'] = $config['base_path'];
+  $config_haruca['basepath'] = $config['base_path']."/plugins/haruca";
+  $config_haruca['binpath'] = $config_haruca['basepath']."/bin/";
+  $config_haruca['datpath'] = $config_haruca['basepath']."/dat/";
+  $config_haruca['datoldpath'] = $config_haruca['basepath']."/dat/old/";
+  $config_haruca['conffile'] = $config_haruca['basepath']."/bin/conffile";
+  $config_haruca['tmppath'] = $config_haruca['basepath']."/tmp/haruca_";
+  $config_haruca['logpath'] = $config_haruca['basepath']."/log/haruca.log";
+  $config_haruca['perlpath'] = "/usr/bin/perl";
+
+  $config_haruca['database_type'] =   $database_type;
+  $config_haruca['database_default'] =   $database_default;
+  $config_haruca['database_hostname'] =   $database_hostname;
+  $config_haruca['database_username'] =   $database_username;
+  $config_haruca['database_password'] =   $database_password;
+  $config_haruca['database_port'] =   $database_port;
+
+  $config_haruca['snmpwalkpath'] = read_config_option('path_snmpwalk');
+  $config_haruca['snmpgetpath'] = read_config_option('path_snmpget');
+
+
+# __('JpString','po_file')
+# Now not preparing locale files...
+
+global $tabs_all,$tabs_no_manage, $tabs_show,$tabs_tool,$tabs_manage,$tabs_manual;
+$tabs_all = array(
+  'show'    => __('Show', 'haruca'),
+  'tool'    => __('Tool', 'haruca'),
+  'manage'  => __('Manage', 'haruca'),
+  'manual'  => __('Manual', 'haruca')
+);
+
+$tabs_no_manage = array(
+  'show'    => __('Show', 'haruca'),
+  'tool'    => __('Tool', 'haruca'),
+  'manual'  => __('Manual', 'haruca')
+);
+
+$tabs_show = array(
+  'show_statuscheck' => __('StatChk', 'haruca'),
+  'show_statuscheckold' => __('StatChk(Old)', 'haruca'),
+  'show_traps' => __('Traps', 'haruca'),
+  'show_logs' => __('Logs', 'haruca'),
+  'show_hosts' => __('Hosts', 'haruca'),
+);
+
+
+$tabs_tool = array(
+  'tool_loggetter' => __('LogGetter', 'haruca'),
+  'tool_configchanger' => __('ConfChanger', 'haruca'),
+  'tool_bwcalc' => __('BWcalc', 'haruca'),
+  #'tool_configchange_execute' => __('ConfChanger_Ex', 'haruca'),
+  'tool_shell' => __('Shell', 'haruca'),
+  'tool_wcmcalc' => __('WCmaskCalc', 'haruca')
+);
+
+$tabs_manage = array(
+  'manage_config' => __('Config', 'haruca'),
+  'manage_host' => __('Host', 'haruca'),
+  'manage_category' => __('Category', 'haruca'),
+  'manage_office' => __('Office', 'haruca'),
+  'manage_logtype' => __('LogType', 'haruca'),
+  'manage_traptype' => __('TrapType', 'haruca'),
+  'manage_export' => __('Export', 'haruca'),
+  'manage_reset_config' => __('ResetConfig', 'haruca')
+);
+
+$tabs_manual = array(
+  'manual_setup' => __('SetUp', 'haruca'),
+  'manual_command' => __('Cmd', 'haruca'),
+);
+
+
+
+
+
+function haruca_conf_to_file() {
+  global $config_haruca;
+
+  $buf = "";
+  foreach ($config_haruca as $key => $value){
+    $buf .= "$key = $value\n";
   }
 
-        get_filter_request_var('tab', FILTER_VALIDATE_REGEXP, array('options' => array('regexp' => '/^([a-zA-Z]+)$/')));
-
-        load_current_session_value('tab', 'sess_haruca_graph_tab', 'general');
-        $current_tab = get_request_var('action');
-
-        /* draw the tabs */
-        print "<div class='tabs'><nav><ul>\n";
-
-        if (sizeof($tabs)) {
-                foreach (array_keys($tabs) as $tab_short_name) {
-                        print "<li><a class='tab" . (($tab_short_name == $current_tab) ? " selected'" : "'") .
-                                " href='" . htmlspecialchars($config['url_path'] .
-                                'plugins/haruca/haruca.php?' .
-                                'action=' . $tab_short_name) .
-                                "'>" . $tabs[$tab_short_name] . "</a></li>\n";
-                }
-        }
-
-        print "</ul></nav></div>\n";
-}
-
-function haruca_header() {
-global $config, $menu, $user_menu;
-
-$oper_mode = api_plugin_hook_function('top_header', OPER_MODE_NATIVE);
-if ($oper_mode == OPER_MODE_RESKIN) {
-        return;
-}
-
-$page_title = api_plugin_hook_function('page_title', draw_navigation_text('title'));
-$using_guest_account = false;
-
-?>
-<!DOCTYPE html>
-<html>
-<head>
-        <?php haruca_html_common_header($page_title);?>
-</head>
-<body>
-<div id='cactiPageHead' class='cactiPageHead' role='banner'>
-        <?php if ($oper_mode == OPER_MODE_NATIVE) { ;?>
-        <div id='tabs'><?php html_show_tabs_left();?></div>
-        <div class='cactiConsolePageHeadBackdrop'></div>
-</div>
-<div id='breadCrumbBar' class='breadCrumbBar'>
-        <div id='navBar' class='navBar'><?php echo draw_navigation_text();?></div>
-        <div class='scrollBar'></div>
-        <?php if (read_config_option('auth_method') != 0) {?><div class='infoBar'><?php echo draw_login_status($using_guest_account);?></div><?php }?>
-</div>
-<div class='cactiShadow'></div>
-<div id='cactiContent' class='cactiContent'>
-        <?php if (isset($user_menu) && is_array($user_menu)) {?>
-        <div style='display:none;' id='navigation' class='cactiConsoleNavigationArea'>
-                <table style='width:100%;'>
-                        <?php draw_menu($user_menu);?>
-                        <tr>
-                                <td style='text-align:center;'>
-                                        <div class='cactiLogo' onclick='loadPage("<?php print $config['url_path'];?>about.php")'></div>
-                                </td>
-                        </tr>
-                </table>
-        </div>
-        <div id='navigation_right' class='cactiConsoleContentArea'>
-                <div style='position:relative;' id='main'>
-        <?php } else { ?>
-        <div id='navigation_right' class='cactiConsoleContentArea' style='margin-left:0px;'>
-                <div style='position:relative;' id='main'>
-        <?php } ?>
-<?php } else { ?>
-        <div id='navigation_right' class='cactiConsoleContentArea'>
-                <div style='position:relative;' id='main' role='main'>
-<?php } 
+  $file = fopen($config_haruca["conffile"],"w");
+  fwrite($file,$buf);
+  fclose($file);
 
 }
 
-function haruca_html_common_header($title, $selectedTheme = '') {
-?>
-
-<meta http-equiv='X-UA-Compatible' content='IE=Edge,chrome=1'>
-<meta content='width=device-width, initial-scale=1.0, minimum-scale=1.0, maximum-scale=1.0' name='viewport'>
-<meta name='apple-mobile-web-app-capable' content='yes'>
-<meta name='mobile-web-app-capable' content='yes'>
-<meta name='robots' content='noindex,nofollow'>
-<title>Console -> Haruca </title>
-<meta http-equiv='Content-Type' content='text/html;charset=utf-8'>
-<script type='text/javascript'>var theme='modern';</script>
-<link href='/cacti/include/themes/modern/images/favicon.ico' rel='shortcut icon'>
-<link href='/cacti/include/themes/modern/images/cacti_logo.gif' rel='icon' sizes='96x96'>
-<!-- 
-<link href='/cacti/include/themes/modern/jquery.zoom.css?a1ae44c41387c6652e9cd9714ad643b5' type='text/css' rel='stylesheet'>
-<link href='/cacti/include/themes/modern/jquery.multiselect.css?e8d1b3ce433249ef1f2f15343caa74fb' type='text/css' rel='stylesheet'>
-<link href='/cacti/include/themes/modern/jquery.timepicker.css?431ab7d4ef48afd9c39a647c5c990b0a' type='text/css' rel='stylesheet'>
-<link href='/cacti/include/themes/modern/jquery.colorpicker.css?fd70588fc7990c783ba6b2722371b9bd' type='text/css' rel='stylesheet'>
-<link href='/cacti/include/themes/modern/jquery-ui.css?2cf675060576827318a6adf539998e06' type='text/css' rel='stylesheet'>
-<link href='/cacti/include/themes/modern/default/style.css?b16e44c8ea2180ea769a22921bc369ad' type='text/css' rel='stylesheet'>
-<link href='/cacti/include/themes/modern/c3.css?4aef467349628c8e407ecc205eac5375' type='text/css' rel='stylesheet'>
-<link href='/cacti/include/themes/modern/pace.css?813d842ea49d68287a59d7f49575aaa6' type='text/css' rel='stylesheet'>
-<link href='/cacti/include/fa/css/font-awesome.css?c495654869785bc3df60216616814ad1' type='text/css' rel='stylesheet'>
-<link href='/cacti/include/themes/modern/main.css?da4e4e11cc3adf6a7e709c07350cecb1' type='text/css' rel='stylesheet'>
--->
-<script type='text/javascript' src='/cacti/include/js/jquery.js?9c3a8d5bf79a2b2c25b4d9f99fbf6db2'></script>
-<script type='text/javascript' src='/cacti/include/js/screenfull.js?f3fee4f35cb108c8187062e386985fe7'></script>
-
-<script type='text/javascript' src='/cacti/include/js/jquery-migrate.js?3745a6e80cbf38ec3794302b4a47adc6'></script>
-<script type='text/javascript' src='/cacti/include/js/jquery-ui.js?eac59f255a915c3c9cf56ba3286a0f0e'></script>
-<script type='text/javascript' src='/cacti/include/js/jquery.ui.touch.punch.js?4195aad6f616651c00557e84c6721646'></script>
-<script type='text/javascript' src='/cacti/include/js/jquery.cookie.js?0b804d4f90de70b032a9986b22165b75'></script>
-<script type='text/javascript' src='/cacti/include/js/js.storage.js?dbcd4e6ad90c47adfa9dd509ceb55eb9'></script>
-<script type='text/javascript' src='/cacti/include/js/jstree.js?b371a59bea924b430bb6b60904fbaac8'></script>
-<script type='text/javascript' src='/cacti/include/js/jquery.hotkeys.js?fbf82bcab286e9fc5cdf863eb067230f'></script>
-<script type='text/javascript' src='/cacti/include/js/jquery.tablednd.js?a33b14ebf8ce2abf7911e62cbc19e0c5'></script>
-<script type='text/javascript' src='/cacti/include/js/jquery.zoom.js?ee00764cc055d3eda4ee45b183ace84d'></script>
-<script type='text/javascript' src='/cacti/include/js/jquery.multiselect.js?d4188f31d19285683731418f0f8854e8'></script>
-<script type='text/javascript' src='/cacti/include/js/jquery.multiselect.filter.js?eb99fd8e2b0736c839c1b0a736af21c0'></script>
-<script type='text/javascript' src='/cacti/include/js/jquery.timepicker.js?f29132ab24085f909242175ad11cfcbc'></script>
-<script type='text/javascript' src='/cacti/include/js/jquery.colorpicker.js?4a5021ca49f95df1c61ba53873a1e70a'></script>
-<script type='text/javascript' src='/cacti/include/js/jquery.tablesorter.js?fd19ff8bfeaf5ac46158039bafb51db8'></script>
-<script type='text/javascript' src='/cacti/include/js/jquery.tablesorter.widgets.js?afa8ff74d0a737d7c0cb40301392966f'></script>
-<script type='text/javascript' src='/cacti/include/js/jquery.tablesorter.pager.js?a726022630463a531fdf87d5c327ff1b'></script>
-<script type='text/javascript' src='/cacti/include/js/jquery.metadata.js?bdd7532ce75cce796a5451bd4322d61f'></script>
-<script type='text/javascript' src='/cacti/include/js/jquery.sparkline.js?c7638b825bc7deb1cf58c990825d35b2'></script>
-<script type='text/javascript' src='/cacti/include/js/Chart.js?b3c4f8661a73c6997c7f0aad0583a9db'></script>
-<script type='text/javascript' src='/cacti/include/js/dygraph-combined.js?b5b448f71f8c3eb4a39506299bd81b0c'></script>
-<script type='text/javascript' src='/cacti/include/js/d3.js?fa31e071b81cbaf76bc3b63964b9dbbb'></script>
-<script type='text/javascript' src='/cacti/include/js/c3.js?55bae45a4ac8b133b4ebc5667b341c15'></script>
-<script type='text/javascript' src='/cacti/include/js/pace.js?30fbf6c62d78d3367fa50bd51913200c'></script>
-<script type='text/javascript' src='/cacti/include/realtime.js?796b0a256e3187fe51ab8c4576da43d6'></script>
-<script type='text/javascript' src='/cacti/include/layout.js?c0ecb6432b97efba399145bb5f23b6fe'></script>
-<script type='text/javascript' src='/cacti/include/themes/modern/main.js?9750806ae1aa971056ea5cd9400148a4'></script>
-<link href='/cacti/plugins/thold/themes/modern/main.css' type='text/css' rel='stylesheet'>
-        <script type='text/javascript'>
-        $(function() {
-                $(document).ajaxComplete(function() {
-                        $('.tholdVRule').unbind().click(function(event) {
-                                event.preventDefault();
-
-                                href = $(this).attr('href');
-                                href += '&header=false';
-
-                                $.get(href, function(data) {
-                                        $('#main').empty().hide();
-                                        $('div[class^="ui-"]').remove();
-                                        $('#main').html(data);
-                                        applySkin();
-                                });
-                        });
-                });
-        });
-        </script>
-        <script type="text/javascript">if (top != self) {top.location.href = self.location.href;}</script><script type="text/javascript">var csrfMagicToken = "sid:9747b5351c658ff6d89d4a7c79503d1815131bbf,1528527233";var csrfMagicName = "__csrf_magic";</script><script src="/cacti/include/csrf/csrf-magic.js" type="text/javascript"></script></head>
+function haruca_tabs() {
+  global $config;
+  global $tabs_all,$tabs_no_manage;
+  global $tabs_show,$tabs_tool,$tabs_manage,$tabs_manual;
 
 
-<?php
+  /* First level tab */
+  /* present a tabbed interface */
+  $current_page = preg_replace("/haruca_(.+?)\.php/","$1",get_current_page());
+  if(api_user_realm_auth('haruca_manage.php')) {
+    $tabs = $tabs_all;
+  }else{
+    $tabs = $tabs_no_manage;
+  }
 
-        api_plugin_hook('page_head');
+  /* draw the tabs */
+  print "<div class='tabs'><nav><ul>\n";
+
+  if (sizeof($tabs)) {
+    foreach (array_keys($tabs) as $keys => $tab_short_name ) {
+      print "<li><a class='tab" . (($tab_short_name == $current_page) ? " selected'" : "'") ;
+      print " href='" . htmlspecialchars($config['url_path'] .  'plugins/haruca/haruca_'.$tab_short_name.'.php?' .  'action=' . $tab_short_name) ;
+      print "'>" . $tabs[$tab_short_name] . "</a></li>\n";
+ 
+    }
+  }
+  print "</ul></nav></div>\n";
+  print "<BR>\n";
+
+
+
+
+  /* Second level tab */
+  /* present a tabbed interface */
+  switch($current_page){
+    case 'show':
+      $tabs = $tabs_show;
+      break;
+    case 'manage':
+      $tabs = $tabs_manage;
+      break;
+    case 'tool':
+      $tabs = $tabs_tool;
+      break;
+    case 'manual':
+      $tabs = $tabs_manual;
+      break;
+  }
+
+  $current_tab = get_request_var('action');
+
+  print "<div class='tabs'><nav><ul>\n";
+  if (sizeof($tabs)) {
+    foreach (array_keys($tabs) as $keys => $tab_short_name ) {
+        print "<li><a class='tab" . (($tab_short_name == $current_tab) ? " selected'" : "'") ;
+        print " href='" . htmlspecialchars($config['url_path'] .  'plugins/haruca/haruca_'.$current_page.'.php?' .  'action=' . $tab_short_name) ;
+      print "'>" . $tabs[$tab_short_name] . "</a></li>\n";
+    }
+  }
+
+  print "</ul></nav></div>\n";
 
 }
+
+
+function page_default(){
+  global $config_haruca;
+  $buf = "";
+  if(`{$config_haruca['binpath']}pmcheck.pl` != "OK"){
+    $buf .= "<H1>SETUP FAILED</H1><BR>\n";
+    $buf .= "##### SET symbolic link haruca.pm TO perl @INC DIRECTORY #####<BR>\n";
+    $buf .= "[user@cacti haruca]$ perl -E 'say for @INC'<BR>\n";
+    $buf .= "/usr/local/lib64/perl5<BR>\n";
+    $buf .= "/usr/local/share/perl5<BR>\n";
+    $buf .= "/usr/lib64/perl5/vendor_perl<BR>\n";
+    $buf .= "/usr/share/perl5/vendor_perl<BR>\n";
+    $buf .= "/usr/lib64/perl5<BR>\n";
+    $buf .= "/usr/share/perl5<BR>\n";
+    $buf .= "<BR>\n";
+    $buf .= "[user@cacti haruca]$ sudo ln -s /usr/share/cacti/plugins/haruca/bin/haruca.pm /usr/lib64/perl5/<BR>\n";
+    $buf .= "<BR>\n";
+    $buf .= "##### INSTALL require modules #####<BR>\n";
+    $buf .= "[user@cacti]$ sudo yum install perl-CPAN perl-YAML perl-DBI perl-DBD-MySQL perl-Net-Telnet perl-Net-SSH perl-Expect <BR>\n";
+    $buf .= "[user@cacti]$ sudo perl -MCPAN -e 'install Test::More' <BR>\n";
+    $buf .= "[user@cacti]$ sudo perl -MCPAN -e 'install Net::SSH::Expect' <BR>\n";
+    $ret = array('status' => 'NG' , 'msg' => $buf );
+  }else{
+    $buf .= "<center>\n";
+    $buf .= "  <H3>haruca</H3>\n";
+    $buf .= "  Please select item from tabs.\n";
+    $buf .= "</center>\n";
+    $ret = array('status' => 'OK' , 'msg' => $buf );
+  }
+
+  return ($ret);
+  # データベースに不整合があった場合に新規追加／削除する処理を追加したい
+
+
+}
+
+function local_quote($string){
+
+  if(0){
+  if(empty($string)){
+    $string = "NULL";
+  }else{
+    $string = '"'.  $string . '"';
+  }
+  }else{
+    $string = db_qstr($string);
+  }
+
+  return $string;
+}
+
+function print_page(){
+  $title = func_get_arg(0);
+  $function = func_get_arg(1);
+
+  print "<center>\n";
+  print "       <H3>".func_get_arg(0)."</H3>\n";
+  print "       <HR>\n";
+  print "</center>\n";
+  print "<table width=100% >\n";
+
+  print "       <tr>\n";
+  print "               <td>". call_user_func(func_get_arg(1)) . "</td>\n";
+  print "       </tr>\n";
+
+
+  if(func_num_args() === 3){
+    print "     <tr>\n";
+    print "             <td>". call_user_func(func_get_arg(2)) . "</td>\n";
+    print "     </tr>\n";
+  }
+  print "</table>\n";
+
+}
+
+
 
 function haruca_footer() {
-       global $config, $no_session_write;
 
-        include($config['base_path'] . '/include/global_session.php');
+print "<hr>\n";
+print "Half Ability Router Utility and Config Archiver <BR>\n";
+print "( " . db_fetch_cell("select now() as today") . " )<BR>\n";
 
-        if (!isset_request_var('header') || get_nfilter_request_var('header') == 'true') {
-                include($config['base_path'] . '/include/bottom_footer.php');
-        }
-
-        kill_session_var('sess_field_values');
-
-        debug_log_clear();
-
-        if (array_search(get_current_page(), $no_session_write) === false) {
-                session_write_close();
-        }
-
-        db_close();
 }
 
 
+function send_alert_mail($mail_subject,$mail_body){
+  if(empty($mail_subject)){return 0;}
+  if(empty($mail_body)){return 0;}
 
-function haruca_header_orig() {
+  $sql = "select value from plugin_haruca_settings where item = 'alert_email_from_name'";
+  #$result = mysql_query($sql);
+  #$row = mysql_fetch_assoc($result);
+  #$rows = db_fetch_assoc($sql);
+  $rows = db_fetch_row($sql);
+  $alert_email_from_name = $rows['value'];
 
-global $config, $menu, $user_menu;
+  $sql = "select value from plugin_haruca_settings where item = 'alert_email_from_address'";
+  #$result = mysql_query($sql);
+  #$row = mysql_fetch_assoc($result);
+  #$rows = db_fetch_assoc($sql);
+  $rows = db_fetch_row($sql);
+  $alert_email_from_address = $rows['value'];
 
-$oper_mode = api_plugin_hook_function('top_header', OPER_MODE_NATIVE);
-if ($oper_mode == OPER_MODE_RESKIN) {
-        return;
+  $sql = "select value from plugin_haruca_settings where item = 'alert_email_to_address'";
+  #$result = mysql_query($sql);
+  #$row = mysql_fetch_assoc($result);
+  #$rows = db_fetch_assoc($sql);
+  $rows = db_fetch_row($sql);
+  $mail_to = $rows['value'];
+
+  $sql = "select value from plugin_haruca_settings where item = 'alert_smtp_server'";
+  #$result = mysql_query($sql);
+  #$row = mysql_fetch_assoc($result);
+  #$rows = db_fetch_assoc($sql);
+  $rows = db_fetch_row($sql);
+  $server = $rows['value'];
+
+  #メールアドレスは正確な正規表現が不可能なので設定アドレスは
+  #数字と英文字のみで構成されていないと弾くことにした。
+  #よくある example@example.com ならOK
+  if(preg_match("/^[a-zA-Z][0-9a-zA-Z._\-]+@[0-9a-zA-Z]+(\.[0-9a-zA-Z]+)+$/",$mail_to)){
+    $res = haruca_send_mail( $mail_to , $mail_subject , $mail_body , $alert_email_from_name,$alert_email_from_address,$server);
+  }else{
+    $res = "to address illigal\n";
+  }
+
+  return $res;
+
 }
 
-$page_title = api_plugin_hook_function('page_title', draw_navigation_text('title'));
-$using_guest_account = false;
+
+function haruca_send_mail($to,$subject,$body,$from_name,$from_address,$server){
+  //各種設定
+
+  $header  = "";
+
+  if(empty($from_name)){
+    $header .= "From: $from_address\n";
+  }else{
+    $header .= "From: $from_name <{$from_address}>\n";
+  }
+  $header .= "To: $to\n";
+  $header .= "Subject: $subject\n";
+  $header .= "Content-Transfer-Encoding: 7bit\n";
+  $header .= "Content-Type: text/plain;\n\n";
+  $res = "";
+
+  $sock = fsockopen($server,25);
+  fputs($sock,"EHLO $server\n"); //SMTPコマンド発行
+  fputs($sock,"MAIL FROM: $from_address\n"); //FROMアドレス指定
+  fputs($sock,"RCPT TO: $to\n"); //宛先指定
+  fputs($sock,"DATA\n"); //DATAを送信後、ピリオドオンリーの行を送るまで本文。
+  fputs($sock,"$header"); //Subjectヘッダ送信
+  fputs($sock,"$body\n"); //本文送信
+  fputs($sock,"\n.\n"); //ピリオドのみの行を送信。
+  $result = fgets($sock);
+
+  if(preg_match("/^220/",$result)){
+    $res = "success";
+  }else{
+    $res = "fail";
+  }
+  fclose($sock); //ソケット閉じる
+
+  return $res;
+}
 
 ?>
-<!DOCTYPE html>
-<html>
-<head>
-        <?php html_common_header($page_title);?>
-</head>
-<body>
-<div id='cactiPageHead' class='cactiPageHead' role='banner'>
-        <?php if ($oper_mode == OPER_MODE_NATIVE) { ;?>
-        <div id='tabs'><?php html_show_tabs_left();?></div>
-        <div class='cactiConsolePageHeadBackdrop'></div>
-</div>
-<div id='breadCrumbBar' class='breadCrumbBar'>
-        <div id='navBar' class='navBar'><?php echo draw_navigation_text();?></div>
-        <div class='scrollBar'></div>
-        <?php if (read_config_option('auth_method') != 0) {?><div class='infoBar'><?php echo draw_login_status($using_guest_account);?></div><?php }?>
-</div>
-<div class='cactiShadow'></div>
-<div id='cactiContent' class='cactiContent'>
-        <?php if (isset($user_menu) && is_array($user_menu)) {?>
-        <div style='display:none;' id='navigation' class='cactiConsoleNavigationArea'>
-                <table style='width:100%;'>
-                        <?php draw_menu($user_menu);?>
-                        <tr>
-                                <td style='text-align:center;'>
-                                        <div class='cactiLogo' onclick='loadPage("<?php print $config['url_path'];?>about.php")'></div>
-                                </td>
-                        </tr>
-                </table>
-        </div>
-        <div id='navigation_right' class='cactiConsoleContentArea'>
-                <div style='position:relative;' id='main'>
-        <?php } else { ?>
-        <div id='navigation_right' class='cactiConsoleContentArea' style='margin-left:0px;'>
-                <div style='position:relative;' id='main'>
-        <?php } ?>
-<?php } else { ?>
-        <div id='navigation_right' class='cactiConsoleContentArea'>
-                <div style='position:relative;' id='main' role='main'>
-<?php } 
-
-}
-
-function haruca_footer_orig() {
-       global $config, $no_session_write;
-
-        include($config['base_path'] . '/include/global_session.php');
-
-        if (!isset_request_var('header') || get_nfilter_request_var('header') == 'true') {
-                include($config['base_path'] . '/include/bottom_footer.php');
-        }
-
-        kill_session_var('sess_field_values');
-
-        debug_log_clear();
-
-        if (array_search(get_current_page(), $no_session_write) === false) {
-                session_write_close();
-        }
-
-        db_close();
-}
-
 

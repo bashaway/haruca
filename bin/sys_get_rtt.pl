@@ -12,7 +12,7 @@ my ($result,$hostcode);
 ## 定型ログ書き出し（標準出力）
 #haruca::prt_logdate("SYS_GET_RTT_ALL START");
 
-my @hosts = split(/\n/,`${main::binpath}search . -c`);
+my @hosts = split(/\n/,`${main::config_haruca{'binpath'}}search . -c`);
 
 # 100個で１スレッドを消費
 my $div = 100;
@@ -71,7 +71,7 @@ sub get_rtt_core{
   my $rtt;
 
   $rtt = haruca::getrtt(haruca::hostcode_to_hostname($hostcode));
-  if(($rtt =~ /$main::ping_fail_str/)||($rtt eq "")){ $rtt = -1; }
+  if(($rtt =~ /$main::config_haruca{'ping_fail_str'}/)||($rtt eq "")){ $rtt = -1; }
 
   $rtt_host{$hostcode}=$rtt;
 

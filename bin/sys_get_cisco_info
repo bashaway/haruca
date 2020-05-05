@@ -58,12 +58,12 @@ sub get_snmp_info{
   @results = $dbh->selectrow_array($sql);
   $dbh->disconnect;
   $community = $results[0];
-  if($results[1] = "2"){
+  if($results[1] == "2"){
     $snmp_vers   = "2c";
   }else{
     $snmp_vers   = $results[1];
   }
-  $cmd = "${main::snmpwalkpath} -c $community -v $snmp_vers $hostname 1.3.6.1.2.1.47.1.1.1.1.2";
+  $cmd = "${main::config_haruca{'snmpwalkpath'}} -c $community -v $snmp_vers $hostname 1.3.6.1.2.1.47.1.1.1.1.2";
   foreach(split(/\n/,`$cmd`)){
     if($_ =~ m/.+\.(\d+)\ =/){
       $index = $1;
@@ -82,7 +82,7 @@ sub get_snmp_info{
     if($info{'description'}{$_} =~ m/ethernet/i){next;}
 
     # software version
-    $cmd = "${main::snmpgetpath} -c $community -v $snmp_vers $hostname 1.3.6.1.2.1.47.1.1.1.1.10.$_";
+    $cmd = "${main::config_haruca{'snmpgetpath'}} -c $community -v $snmp_vers $hostname 1.3.6.1.2.1.47.1.1.1.1.10.$_";
     $version = `$cmd`;
     $version =~ s/,.+?"/"/;
     if($version =~ m/\"(.*?)\"/){
@@ -92,7 +92,7 @@ sub get_snmp_info{
     }
 
     # serial
-    $cmd = "${main::snmpgetpath} -c $community -v $snmp_vers $hostname 1.3.6.1.2.1.47.1.1.1.1.11.$_";
+    $cmd = "${main::config_haruca{'snmpgetpath'}} -c $community -v $snmp_vers $hostname 1.3.6.1.2.1.47.1.1.1.1.11.$_";
     if(`$cmd` =~ m/.+=.+STRING:\ +"(.+)"/){
       $info{'serial'}{$_} = $1;
     }else{
@@ -100,7 +100,7 @@ sub get_snmp_info{
     }
 
     # model
-    $cmd = "${main::snmpgetpath} -c $community -v $snmp_vers $hostname 1.3.6.1.2.1.47.1.1.1.1.13.$_";
+    $cmd = "${main::config_haruca{'snmpgetpath'}} -c $community -v $snmp_vers $hostname 1.3.6.1.2.1.47.1.1.1.1.13.$_";
     if(`$cmd` =~ m/.+=.+STRING:\ +"(.+)"/){
       $info{'model'}{$_} = $1;
     }else{
@@ -128,9 +128,9 @@ sub get_cisco_info{
 
   $hostname = shift;
 
-  $result = `${main::binpath}router $hostname show version`;
+  $result = `${main::config_haruca{'binpath'}}router $hostname show version`;
 
-  if($result =~/${main::not_set_pass}/){return;}
+  if($result =~/${main::config_haruca{'not_set_pass'}}/){return;}
 
   foreach(split(/\n/,$result)){
     if($_ =~ /[Cc]isco\ (.+)\ (\(.+\)).+bytes of memory.$/){$model = (split(/\(/,$_))[0]; $model =~ s/[Cc]isco\ //g; $model =~ s/\ $//g; }

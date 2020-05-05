@@ -17,14 +17,14 @@ foreach(@hosts){
   if($main::opts[0] =~ /rapid/){
     $result = haruca::getrtt_rapid($_);
     $ip = $dbh->selectrow_array("select hostname from host where description = '$_'");
-    $ret =  "$_($ip)$main::delim$result\n";
+    $ret =  "$_($ip)$main::config_haruca{'delim'}$result\n";
   }elsif($main::opts[0] =~ /ip/){
     $result = haruca::getrtt_ip($_);
-    $ret =  "$_$main::delim$result\n";
+    $ret =  "$_$main::config_haruca{'delim'}$result\n";
   }else{
     $result = haruca::getrtt($_);
     $ip = $dbh->selectrow_array("select hostname from host where description = '$_'");
-    $ret =  "$_($ip)$main::delim$result\n";
+    $ret =  "$_($ip)$main::config_haruca{'delim'}$result\n";
   }
 
   print $ret;

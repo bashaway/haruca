@@ -1,6 +1,8 @@
 <?php
 
 function plugin_haruca_install($upgrade = 0) {
+  global $config;
+  include_once($config["base_path"] . "/plugins/haruca/haruca_functions.php");
 
    $plugin = 'haruca';
    api_plugin_register_hook($plugin, 'page_head',             'haruca_page_head',            'setup.php');
@@ -9,32 +11,148 @@ function plugin_haruca_install($upgrade = 0) {
 
    api_plugin_register_hook($plugin, 'config_arrays',         'haruca_config_arrays',        "setup.php");
    api_plugin_register_hook($plugin, 'draw_navigation_text',  'haruca_draw_navigation_text', "setup.php");
-   /* api_plugin_register_hook($plugin, 'config_settings',       'haruca_config_settings',      "setup.php"); */
+   api_plugin_register_hook($plugin, 'config_insert',         'haruca_config_insert', 'settings.php');
 
-   /* api_plugin_register_hook($plugin, 'config_form',           'haruca_config_form',          "setup.php"); */
-   /* api_plugin_register_hook($plugin, 'top_graph_refresh',     'haruca_top_graph_refresh',    "setup.php"); */
+   api_plugin_register_hook($plugin, 'config_settings',       'haruca_config_settings',      "setup.php");
+   api_plugin_register_hook($plugin, 'config_form',           'haruca_config_form',          "setup.php");
 
-   api_plugin_register_realm($plugin, 'haruca.php', 'Plugin -> haruca viewer', 1);
-   api_plugin_register_realm($plugin, 'haruca_config', 'Plugin -> haruca configure', 1);
+
+   api_plugin_register_realm($plugin, 'haruca_show.php,haruca_tool.php,haruca_manual.php', 'Plugin -> haruca viewer', 1);
+   api_plugin_register_realm($plugin, 'haruca_manage.php', 'Plugin -> haruca configure', 1);
 
    plugin_haruca_setup_table_new ();
 
+   plugin_haruca_setup_dbinfo();
+
 }
+
+function haruca_config_settings ($force = false) {
+  global $config , $tabs, $settings,$haruca_fontsize;
+
+  /* check for an upgrade */
+  plugin_haruca_check_config();
+
+
+        if ($force === false && isset($_SERVER['PHP_SELF']) &&
+                basename($_SERVER['PHP_SELF']) != 'settings.php' &&
+                basename($_SERVER['PHP_SELF']) != 'auth_profile.php')
+                return;
+
+        $tabs['haruca'] = __('Haruca', 'haruca');
+
+        $treeList = array_rekey(get_allowed_trees(), 'id', 'name');
+        $tempHeader = array('haruca_header' => array(
+                        'friendly_name' => __('Haruca General', 'haruca'),
+                        'method' => 'spacer',
+                        ));
+        $temp = array(
+                'haruca_legend' => array(
+                        'friendly_name' => __('Display Legend', 'haruca'),
+                        'description' => __('Check this to display legend.', 'haruca'),
+                        'method' => 'checkbox',
+                        'default' => ''
+                        ),
+
+                'haruca_fontsize' => array(
+                        'friendly_name' => __('Fontsize', 'haruca'),
+                        'description' => __('Select graph scale by fontsize.', 'haruca'),
+                        'method' => 'drop_array',
+                        'default' => '10',
+                        'array' => $haruca_fontsize
+                        ),
+
+                'haruca_path_setting' => array(
+                        'friendly_name' => __('Path Options', 'haruca'),
+                        'method' => 'spacer',
+                        ),
+                'haruca_path_rrdtool' => array(
+                        'friendly_name' => __('RRDTool command path', 'haruca'),
+                        'description' => __('input RRDTool command path ', 'haruca'),
+                        'method' => 'filepath',
+                        'filetype' => 'binary',
+                        'default' => '/usr/bin/rrdtool',
+                        'max_length' => 64,
+                        ),
+                'haruca_path_images' => array(
+                        'friendly_name' => __('writable image directory ', 'haruca'),
+                        'description' => __('generate images for this directory', 'haruca'),
+                        'method' => 'dirpath',
+                        'default' => $config['base_path'] .  '/plugins/haruca/images',
+                        'max_length' => 64,
+                        ),
+
+                'haruca_cheader' => array(
+                        'friendly_name' => __('Misc Options', 'haruca'),
+                        'method' => 'spacer',
+                        ),
+                'haruca_custom_graph_title' => array(
+                        'friendly_name' => __('Custom Title', 'haruca'),
+                        'description' => __('Add Original Strings for Specified Graph Title.', 'haruca'),
+                        'method' => 'textbox',
+                        'max_length' => 255,
+                        )
+        );
+
+        if (isset($settings['haruca'])) {
+                $settings['haruca'] = array_merge($settings['haruca'], $tempHeader, $temp);
+        }else {
+                $settings['haruca'] = array_merge($tempHeader, $temp);
+        }
+
+        if (isset($settings_user['haruca'])) {
+                $settings_user['haruca'] = array_merge($settings_user['haruca'], $temp);
+        }else {
+                $settings_user['haruca'] = $temp;
+        }
+
+}
+
+
+function haruca_config_form() {
+  global $tabs, $settings, $settings_user,$tabs_graphs;
+
+  plugin_haruca_check_config();
+
+  #$tabs['haruca'] = __('Haruca Config Manager', 'haruca');
+  $tabs_graphs += array('haruca' => __('Haruca Settings', 'haruca'));
+
+  $settings_user += array(
+    'haruca' => array(
+      'default_haruca_tab' => array(
+        'friendly_name' => __('Default Tab', 'haruca'),
+        'description' => __('Which Haruca tab would you want to be your Default tab every time you goto the Haruca second.', 'haruca'),
+        'method' => 'drop_array',
+        'default' => 'show',
+        'array' => array(
+          'show' => __('Haruca Show', 'haruca'),
+          'tool' => __('Haruca Tool', 'haruca'),
+          'manage' => __('Haruca Manage', 'haruca'),
+          'manual' => __('haruca manual', 'haruca')
+        )
+      )
+    )
+  );
+}
+
+
 
 function haruca_show_tab () {
 
   global $config;
 
   #print "<!-- DEBUG : haruca_show_tab begin-->\n";
-  if (api_user_realm_auth('haruca.php')) {
+  if (api_user_realm_auth('haruca_show.php')) {
     $cp = false;
-    if (get_current_page() == 'haruca.php') {
+    if (get_current_page() == 'haruca_show.php' || get_current_page() == 'haruca_tool.php' || get_current_page() == 'haruca_manual.php'|| get_current_page() == 'haruca_manage.php') {
       $cp = true;
     }
-    print "<a href=\"" . $config['url_path'] . 'plugins/haruca/haruca.php">';
+    print "<a href=\"" . $config['url_path'] . 'plugins/haruca/haruca_show.php?action=show">';
     print '<img src="' . $config['url_path'] . 'plugins/haruca/images/tab_haruca' . ($cp ? '_down': '') . '.png" alt="haruca" align="absmiddle" border="0"></a>';
   }
   #print "<!-- DEBUG : haruca_show_tab end-->\n";
+
+
+
 
 }
 
@@ -75,19 +193,31 @@ function haruca_page_head() {
 
 
 function plugin_haruca_uninstall () {
+  // Remove items from the settings table
+  db_execute('DELETE FROM settings WHERE name LIKE "%haruca%"');
+  plugin_haruca_drop_table ();
+
 }
 
+
 function plugin_haruca_check_config () {
-	/* Here we will check to ensure everything is configured */
-        plugin_haruca_upgrade();
-	return true;
+  /* Here we will check to ensure everything is configured */
+  haruca_check_upgrade();
+  return true;
 }
 
 function plugin_haruca_upgrade () {
+  /* Here we will upgrade to the newest version */
+  haruca_check_upgrade();
+  return false;
+}
+
+
+function haruca_check_upgrade () {
 
 	global $config;
 
-	$files = array('index.php', 'plugins.php', 'haruca.php');
+	$files = array('index.php', 'plugins.php', 'haruca_show.php');
         if (!in_array(get_current_page(), $files)) {
                 return false;
         }
@@ -113,10 +243,25 @@ function plugin_haruca_check_dependencies() {
 	return true;
 }
 
+function plugin_haruca_drop_table () {
+  db_execute('DROP TABLE IF EXISTS `plugin_haruca_host`');
+  db_execute('DROP TABLE IF EXISTS `plugin_haruca_host`');
+  db_execute('DROP TABLE IF EXISTS `plugin_haruca_office`');
+  db_execute('DROP TABLE IF EXISTS `plugin_haruca_category`');
+  db_execute('DROP TABLE IF EXISTS `plugin_haruca_logtype`');
+  db_execute('DROP TABLE IF EXISTS `plugin_haruca_cat_get_log`');
+  db_execute('DROP TABLE IF EXISTS `plugin_haruca_log`');
+  db_execute('DROP TABLE IF EXISTS `plugin_haruca_logold`');
+  db_execute('DROP TABLE IF EXISTS `plugin_haruca_rtt`');
+  db_execute('DROP TABLE IF EXISTS `plugin_haruca_traplog`');
+  db_execute('DROP TABLE IF EXISTS `plugin_haruca_traptype`');
+  db_execute('DROP TABLE IF EXISTS `plugin_haruca_settings`');
+
+}
+
 function plugin_haruca_setup_table_new () {
   # create table if not exists ....
-  db_execute("SET NAMES 'utf8'");
-
+  #db_execute("SET NAMES 'utf8'");
 
   $data = array();
   $data['primary'] = 'id';
@@ -279,60 +424,76 @@ function plugin_haruca_setup_table_new () {
 
 
 function haruca_config_arrays () {
-  global $menu, $config, $haruca_tab;
+  global $menu, $config,$haruca_fontsize;
   #print "<!-- DEBUG : haruca_config_arrays begin-->\n";
-  include_once($config["base_path"] . "/plugins/haruca/config.php");
+  include_once($config["base_path"] . "/plugins/haruca/haruca_functions.php");
 
-  if(!$haruca_tab){
-    $temp = $menu["Utilities"]['logout.php'];
-    unset($menu["Utilities"]['logout.php']);
-    $menu["Utilities"]['plugins/haruca/haruca.php'] = "haruca";
-    $menu["Utilities"]['logout.php'] = $temp;
-  }
-  #print "<!-- DEBUG : haruca_config_arrays end-->\n";
+  $haruca_fontsize = array(
+    6 => __('Small  (%d pt)',  6, 'haruca'),
+    8 => __('Medium (%d pt)',  8, 'haruca'),
+   10 => __('Large  (%d pt)', 10, 'haruca')
+  );
+
+  return true;
+
 
 }
+
+function haruca_config_insert() {
+  global $menu;
+
+  $menu[__('Management')]['plugins/haruca/haruca_manage.php'] = __('Haruca Management', 'haruca');
+  $menu[__('Utilities')]['plugins/haruca/haruca_manual.php'] = __('haruca manual', 'haruca');
+
+}
+
 
 function haruca_draw_navigation_text ($nav) {
    #print "<!-- DEBUG : haruca_draw_navigation_text begin-->\n";
+
    /* insert all your PHP functions that are accessible */
-   /*
-   $nav['haruca.php:'] = array('title' => 'haruca', 'mapping' => '', 'url' => 'haruca.php', 'level' => '0');
 
-   $nav['haruca.php:show_statuscheck']           = array('title' => 'ShowStatusCheck', 'mapping' => 'haruca.php:', 'url' => 'haruca.php', 'level' => '1');
-   $nav['haruca.php:show_statuscheckold']        = array('title' => 'ShowStatusCheckOld', 'mapping' => 'haruca.php:', 'url' => 'haruca.php', 'level' => '1');
-   $nav['haruca.php:show_traps']                 = array('title' => 'ShowTraps', 'mapping' => 'haruca.php:', 'url' => 'haruca.php', 'level' => '1');
-   $nav['haruca.php:show_logs_execute']          = array('title' => 'ShowLogsExecute', 'mapping' => 'haruca.php:', 'url' => 'haruca.php', 'level' => '1');
-   $nav['haruca.php:show_logs']                  = array('title' => 'ShowLogs', 'mapping' => 'haruca.php:', 'url' => 'haruca.php', 'level' => '1');
-   $nav['haruca.php:show_hosts']                 = array('title' => 'ShowHosts', 'mapping' => 'haruca.php:', 'url' => 'haruca.php', 'level' => '1');
+   $nav['haruca_show.php:']                      = array('title' => __('Haruca show'    , 'haruca'), 'mapping' => ''                , 'url' => 'haruca_show.php', 'level' => '0');
+   $nav['haruca_show.php:show']                  = array('title' => __('Haruca show'    , 'haruca'), 'mapping' => ''                , 'url' => 'haruca_show.php', 'level' => '0');
+   $nav['haruca_show.php:show_statuscheck']           = array('title' => __('StatusCheck'    , 'haruca'), 'mapping' => 'haruca_show.php:', 'url' => '', 'level' => '1');
+   $nav['haruca_show.php:show_statuscheckold']        = array('title' => __('StatusCheckOld' , 'haruca'), 'mapping' => 'haruca_show.php:', 'url' => '', 'level' => '1');
+   $nav['haruca_show.php:show_traps']                 = array('title' => __('Traps'          , 'haruca'), 'mapping' => 'haruca_show.php:', 'url' => '', 'level' => '1');
+   $nav['haruca_show.php:show_logs']                  = array('title' => __('Logs'           , 'haruca'), 'mapping' => 'haruca_show.php:', 'url' => '', 'level' => '1');
+   $nav['haruca_show.php:show_hosts']                 = array('title' => __('Hosts'          , 'haruca'), 'mapping' => 'haruca_show.php:', 'url' => '', 'level' => '1');
 
-   $nav['haruca.php:manage_config']              = array('title' => 'ManageConfig', 'mapping' => 'haruca.php:', 'url' => 'haruca.php', 'level' => '1');
-   $nav['haruca.php:manage_export']              = array('title' => 'ManageExport', 'mapping' => 'haruca.php:', 'url' => 'haruca.php', 'level' => '1');
-   $nav['haruca.php:manage_host']                = array('title' => 'ManageHost', 'mapping' => 'haruca.php:', 'url' => 'haruca.php', 'level' => '1');
-   $nav['haruca.php:manage_category']            = array('title' => 'ManageCategory', 'mapping' => 'haruca.php:', 'url' => 'haruca.php', 'level' => '1');
-   $nav['haruca.php:manage_office']              = array('title' => 'ManageOffice', 'mapping' => 'haruca.php:', 'url' => 'haruca.php', 'level' => '1');
-   $nav['haruca.php:manage_logtype']             = array('title' => 'ManageLogType', 'mapping' => 'haruca.php:', 'url' => 'haruca.php', 'level' => '1');
-   $nav['haruca.php:manage_traptype']            = array('title' => 'ManageTrapType', 'mapping' => 'haruca.php:', 'url' => 'haruca.php', 'level' => '1');
+   $nav['haruca_tool.php:']                      = array('title' => __('Haruca tool'           , 'haruca'), 'mapping' => ''           , 'url' => 'haruca_tool.php', 'level' => '0');
+   $nav['haruca_tool.php:tool']                  = array('title' => __('Haruca tool'           , 'haruca'), 'mapping' => ''           , 'url' => 'haruca_tool.php', 'level' => '0');
+   $nav['haruca_tool.php:tool_loggetter']         = array('title' => __('LogGetter'         , 'haruca'), 'mapping' => 'haruca_tool.php:', 'url' => '', 'level' => '1');
+   $nav['haruca_tool.php:tool_configchanger']         = array('title' => __('ConfigChanger'         , 'haruca'), 'mapping' => 'haruca_tool.php:', 'url' => '', 'level' => '1');
+   $nav['haruca_tool.php:tool_bwcalc']                = array('title' => __('BandWidthCalculate'    , 'haruca'), 'mapping' => 'haruca_tool.php:', 'url' => '', 'level' => '1');
+   $nav['haruca_tool.php:tool_configchanger_execute'] = array('title' => __('ConfigChangerExecute'  , 'haruca'), 'mapping' => 'haruca_tool.php:', 'url' => '', 'level' => '1');
+   $nav['haruca_tool.php:tool_shell']                 = array('title' => __('EasyShell'             , 'haruca'), 'mapping' => 'haruca_tool.php:', 'url' => '', 'level' => '1');
+   $nav['haruca_tool.php:tool_wcmcalc']               = array('title' => __('WildCardMaskCalc'      , 'haruca'), 'mapping' => 'haruca_tool.php:', 'url' => '', 'level' => '1');
 
-   $nav['haruca.php:reset_config']               = array('title' => 'ResetConfig', 'mapping' => 'haruca.php:', 'url' => 'haruca.php', 'level' => '1');
+   $nav['haruca_manage.php:']                    = array('title' => __('Haruca manage'  , 'haruca'), 'mapping' => '', 'url' => 'haruca_manage.php', 'level' => '0');
+   $nav['haruca_manage.php:manage']              = array('title' => __('Haruca manage'  , 'haruca'), 'mapping' => '', 'url' => 'haruca_manage.php', 'level' => '0');
+   $nav['haruca_manage.php:manage_config']              = array('title' => __('Config'         , 'haruca'), 'mapping' => 'haruca_manage.php:', 'url' => '', 'level' => '1');
+   $nav['haruca_manage.php:manage_export']              = array('title' => __('Export'         , 'haruca'), 'mapping' => 'haruca_manage.php:', 'url' => '', 'level' => '1');
+   $nav['haruca_manage.php:manage_host']                = array('title' => __('Host'           , 'haruca'), 'mapping' => 'haruca_manage.php:', 'url' => '', 'level' => '1');
+   $nav['haruca_manage.php:manage_category']            = array('title' => __('Category'       , 'haruca'), 'mapping' => 'haruca_manage.php:', 'url' => '', 'level' => '1');
+   $nav['haruca_manage.php:manage_office']              = array('title' => __('Office'         , 'haruca'), 'mapping' => 'haruca_manage.php:', 'url' => '', 'level' => '1');
+   $nav['haruca_manage.php:manage_logtype']             = array('title' => __('LogType'        , 'haruca'), 'mapping' => 'haruca_manage.php:', 'url' => '', 'level' => '1');
+   $nav['haruca_manage.php:manage_traptype']            = array('title' => __('TrapType'       , 'haruca'), 'mapping' => 'haruca_manage.php:', 'url' => '', 'level' => '1');
+   $nav['haruca_manage.php:manage_reset_config']          = array('title' => __('ResetConfig'           , 'haruca'), 'mapping' => 'haruca_manage.php:', 'url' => '', 'level' => '1');
 
-   $nav['haruca.php:tool_configchanger']         = array('title' => 'ConfigChanger', 'mapping' => 'haruca.php:', 'url' => 'haruca.php', 'level' => '1');
-   $nav['haruca.php:tool_bwcalc']                = array('title' => 'BandWidthCalculate', 'mapping' => 'haruca.php:', 'url' => 'haruca.php', 'level' => '1');
-   $nav['haruca.php:tool_configchanger_execute'] = array('title' => 'ConfigChangerExecute', 'mapping' => 'haruca.php:', 'url' => 'haruca.php', 'level' => '1');
-   $nav['haruca.php:tool_shell']                 = array('title' => 'EasyShell', 'mapping' => 'haruca.php:', 'url' => 'haruca.php', 'level' => '1');
-   $nav['haruca.php:tool_wcmcalc']               = array('title' => 'WildCardMaskCalculate', 'mapping' => 'haruca.php:', 'url' => 'haruca.php', 'level' => '1');
+   $nav['haruca_manual.php:']                    = array('title' => __('Haruca manual'   , 'haruca'), 'mapping' => ''           , 'url' => 'haruca_manual.php', 'level' => '0');
+   $nav['haruca_manual.php:manual']              = array('title' => __('Haruca manual'   , 'haruca'), 'mapping' => ''           , 'url' => 'haruca_manual.php', 'level' => '0');
+   $nav['haruca_manual.php:manual_setup']               = array('title' => __('Setup'           , 'haruca'), 'mapping' => 'haruca_manual.php:', 'url' => '', 'level' => '1');
+   $nav['haruca_manual.php:manual_command']             = array('title' => __('CLI command'     , 'haruca'), 'mapping' => 'haruca_manual.php:', 'url' => '', 'level' => '1');
 
-   $nav['haruca.php:manual_setup']               = array('title' => 'Setup', 'mapping' => 'haruca.php:', 'url' => 'haruca.php', 'level' => '1');
-   $nav['haruca.php:manual_command']             = array('title' => 'CLI command', 'mapping' => 'haruca.php:', 'url' => 'haruca.php', 'level' => '1');
    return $nav;
-   */
-
-   $nav['haruca.php:'] = array('title' => __('HARUCA', 'haruca'), 'mapping' => '', 'url' => 'haruca.php', 'level' => '0');
-   return $nav;
-   #print "<!-- DEBUG : haruca_draw_navigation_text end-->\n";
 
 }
 
 
+function   plugin_haruca_setup_dbinfo(){
+  global $config;
+  haruca_conf_to_file();
+}
 
 ?>

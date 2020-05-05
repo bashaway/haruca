@@ -15,7 +15,7 @@ system("rm -f $dir/*");
 $today = `date \'+%Y-%m-%d\'`;
 chomp($today);
 
-$result = `grep GET_LOG_FAIL ${main::logpath} | egrep -v '(START|END)' | grep $today`;
+$result = `grep GET_LOG_FAIL $main::config_haruca{'logpath'} | egrep -v '(START|END)' | grep $today`;
 
 foreach(split(/\n/,$result)){
   $hostname = (split(/\ /,$_))[-1];

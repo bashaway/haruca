@@ -5,87 +5,38 @@ use Encode;
 use strict;
 use Net::SMTP;
 
-#cactiのインストールディレクトリ
-$main::dir_base_cacti = "/usr/share/cacti/";
 
-#テンポラリファイル用のファイル名
-$main::tmppath        = "/tmp/haruca_";
-
-#perlのパス
-$main::perlpath        = "/usr/bin/perl";
-
-#snmpgetのパス
-$main::snmpgetpath        = "/usr/bin/snmpget";
-
-#snmpwalkのパス
-$main::snmpwalkpath        = "/usr/bin/snmpwalk";
-
-
-#pingタイムアウト
-$main::ping_timeout = 3;
+#  undef @main::opts;
+#  undef @main::stdin;
+#  undef @main::args;
+#  undef $main::pos;
 
 
 
-$main::basepath       = "${main::dir_base_cacti}plugins/haruca/";
-$main::datpath        = "${main::basepath}dat/";
-$main::datoldpath     = "${main::basepath}dat/old/";
-$main::binpath        = "${main::basepath}bin/";
-$main::etcpath        = "${main::basepath}etc/";
-$main::logpath        = "${main::basepath}log/haruca.log";
-$main::cnfpath        = "${main::etcpath}db.php";
+my $conffile = "/usr/share/cacti/plugins/haruca/bin/conffile";
 
-$main::pingpath1 = "/bin/ping -c 1 -w $main::ping_timeout ";
-$main::pingpath2 = "/bin/ping -c 2 -w $main::ping_timeout ";
+my ($line,$key,$val);
 
-$main::sendmailpath = "/usr/sbin/sendmail";
-
-$main::delim = "<<>>";
-$main::delim_line = "------------------------------=-=-\n";
-
-$main::noinfo             = "### no information ###";
-$main::ping_fail_str      = "### ping error ###";
-$main::unknown_error_str  = "### unknown error ###";
-$main::not_set_pass       = "### not set password ###";
-$main::msg_error          = "### error ###";
-$main::not_update_str     = "### not update ###";
-
-open(FILE, "${main::cnfpath}");
+open(FILE, $conffile);
 my @def = <FILE>;
 close(FILE);
 
-foreach(@def){
-  $_ =~ s/\ //g;
-
-  if($_ =~ /^\ *\$database_type/){
-    $main::database_type = get_param($_);
-  }
-
-  if($_ =~ /^\ *\$database_default/){
-    $main::database_default = get_param($_);
-  }
-
-  if($_ =~ /^\ *\$database_hostname/){
-    $main::database_hostname = get_param($_);
-  }
-
-  if($_ =~ /^\ *\$database_username/){
-    $main::database_username = get_param($_);
-  }
-
-  if($_ =~ /^\ *\$database_password/){
-    $main::database_password = get_param($_);
-  }
-
-  if($_ =~ /^\ *\$database_port/){
-    $main::database_port = get_param($_);
-  }
-
+foreach $line (@def){
+  chomp($line);
+  $key = ((split(/\ *=\ */,$line))[0]);
+  $val = ((split(/\ *=\ */,$line))[-1]);
+  $main::config_haruca{$key} =  $val;
 }
+
+#foreach ( keys %main::config_haruca ){
+#  print "$_ : $main::config_haruca{$_}\n";
+#}
+
 
 sub get_param{
   my $line = $_[0];
   my $param;
-  $param = (split(/=/,$line))[-1];
+  $param = (split(/\ *=\ */,$line))[-1];
   $param =~ s/"//g;
   $param =~ s/'//g;
   $param =~ s/;//g;
@@ -97,11 +48,11 @@ sub get_param{
 package haruca;
 
 my $CONF_DB =
-    {host =>    "$main::database_hostname",
-     port=>     "$main::database_port",
-     db_name=>  "$main::database_default",
-     db_user=>  "$main::database_username",
-     db_pass=>  "$main::database_password",
+    {host =>    $main::config_haruca{'database_hostname'},
+     port=>     $main::config_haruca{'database_port'},
+     db_name=>  $main::config_haruca{'database_default'},
+     db_user=>  $main::config_haruca{'database_username'},
+     db_pass=>  $main::config_haruca{'database_password'},
      db_opt=>{
               AutoCommit=>0,
               RaiseError=>1,
@@ -138,7 +89,7 @@ sub prt_logdate{
   my $date;
   chomp($date = `date \'+%Y-%m-%d %H:%M:%S\'`);
 
-  open(FILE,">> ${main::logpath}");
+  open(FILE,">> ${main::config_haruca{'logpath'}}");
   #print FILE get_localtime()." $str\n";
   print FILE "$date $str\n";
   close(FILE);
@@ -339,7 +290,7 @@ sub getrtt_rapid{
     $value = getrtt($_[0]);
   }
 
-  if($value == -1){$value = $main::ping_fail_str;}
+  if($value == -1){$value = $main::config_haruca{'ping_fail_str'};}
   $sth->finish;
   $dbh->disconnect;
   return $value;
@@ -367,7 +318,7 @@ sub pingcheck_rapid{
   $sth->finish;
   $dbh->disconnect;
 
-  if(($value == -1)||($value =~ /$main::ping_fail_str/)){
+  if(($value == -1)||($value =~ /$main::config_haruca{'ping_fail_str'}/)){
     return 0;
   }else{
     return 1;
@@ -382,11 +333,11 @@ sub getrtt{
 
   my $adrs = hostname_to_adrs($hostname);
 
-  $result = `$main::pingpath1 $adrs`;
+  $result = `$main::config_haruca{'pingpath1'} $adrs`;
   if($result =~ /100% packet loss/){
-    $result = `$main::pingpath2 $adrs`;
+    $result = `$main::config_haruca{'pingpath2'} $adrs`;
     if($result =~ /100% packet loss/){
-      $ret = $main::ping_fail_str;
+      $ret = $main::config_haruca{'ping_fail_str'};
     }else{
 
       $result = (split(/\n/,$result))[-1];
@@ -413,11 +364,11 @@ sub getrtt_ip{
   my $result;
   my $ret;
 
-  $result = `$main::pingpath1 $adrs`;
+  $result = `$main::config_haruca{'pingpath1'} $adrs`;
   if($result =~ /100% packet loss/){
-    $result = `$main::pingpath2 $adrs`;
+    $result = `$main::config_haruca{'pingpath2'} $adrs`;
     if($result =~ /100% packet loss/){
-      $ret = $main::ping_fail_str;
+      $ret = $main::config_haruca{'ping_fail_str'};
     }else{
 
       $result = (split(/\n/,$result))[1];
@@ -447,9 +398,9 @@ sub pingcheck{
 
   my $adrs = hostname_to_adrs($hostname);
 
-  $result = `$main::pingpath1 $adrs`;
+  $result = `$main::config_haruca{'pingpath1'} $adrs`;
   if($result =~ /100% packet loss/){
-    $result = `$main::pingpath2 $adrs`;
+    $result = `$main::config_haruca{'pingpath2'} $adrs`;
     if($result =~ /100% packet loss/){
       $ret = 0;
     }else{
@@ -580,7 +531,7 @@ sub send_alert{
   my $dbh;
 
   $hostaddress = "unknown";
-  $tmp = `${main::binpath}search $hostname -ih`;
+  $tmp = `${main::config_haruca{'binpath'}}search $hostname -ih`;
   foreach(split(/\n/,$tmp)){
     if($hostname eq (split(/\ +/,$_))[0]){
       $hostaddress = (split(/\ +/,$_))[1];

@@ -44,6 +44,12 @@ windows版cactiでは動作不可です。~
     - trap受信時にアラートを送信（SMTPサーバを利用したメールおよびIPMessenger）
 
 
+## require
+zip
+perl
+
+
+
 ## 開発環境
 - CentOS Linux release 7.7.1908 
 - cacti-1.2.8

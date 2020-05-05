@@ -4,7 +4,7 @@ use haruca;
 use DBI;
 use strict;
 
-my $file_tmp = `${main::binpath}mkpasswd 10 alnum file`;
+my $file_tmp = `${main::config_haruca{'binpath'}}mkpasswd 10 alnum file`;
 my ($sth, $lognames, $gettime, $result, $olddate, $buf, $buf_old, $buf_latest);
 my $dbh = haruca::connect_db();
 my (@res, @dates);
@@ -18,7 +18,6 @@ if($#ARGV < 1){
 
 my $logname;
 my $hostname;
-my $olddate;
 
 $logname  = $dbh->quote($ARGV[0]);
 $hostname = $ARGV[1];
@@ -76,7 +75,7 @@ if($olddate){
     $sth->bind_columns(undef,\($result,$gettime));
 
     if(!$sth->fetch){
-      print "$loggetcmd $hostname ($olddate) : $main::noinfo \n";
+      print "$loggetcmd $hostname ($olddate) : $main::config_haruca{'noinfo'} \n";
       $sql  = "select gettime from plugin_haruca_logold ";
       $sql .= " where logtypecode = $logtypecode and hostcode = $hostcode order by gettime desc";
       $result = $dbh->selectcol_arrayref("$sql");
@@ -99,11 +98,11 @@ if($olddate){
     }
   }else{
   
-    open(FILE,"| gzip -d - > ${main::tmppath}$file_tmp");
+    open(FILE,"| gzip -d - > ${main::config_haruca{'tmppath'}}$file_tmp");
     print FILE $result;
     close(FILE);
-    $result = `cat ${main::tmppath}$file_tmp`;
-    system("rm -f ${main::tmppath}$file_tmp");    
+    $result = `cat ${main::config_haruca{'tmppath'}}$file_tmp`;
+    system("rm -f ${main::config_haruca{'tmppath'}}$file_tmp");    
 
   }
 
@@ -117,7 +116,7 @@ if($olddate){
   $sth->execute;
   $sth->bind_columns(undef,\($result,$gettime));
 
-  if(!$sth->fetch){ print "$loggetcmd $hostname : $main::noinfo \n"; exit; }
+  if(!$sth->fetch){ print "$loggetcmd $hostname : $main::config_haruca{'noinfo'} \n"; exit; }
 }
 
 $sth->finish;
@@ -125,11 +124,11 @@ $dbh->disconnect;
 
 $result = haruca::unquote($result);
 
-print $main::delim.$loggetcmd." ".$hostname." (".$gettime.")\n";
-print $main::delim_line.$loggetcmd."\n".$main::delim_line;
+print $main::config_haruca{'delim'}.$loggetcmd." ".$hostname." (".$gettime.")\n";
+print $main::config_haruca{'delim_line'}."\n".$loggetcmd."\n".$main::config_haruca{'delim_line'}."\n";
 print $result;
 print "\n";
-print $main::delim.$loggetcmd." ".$hostname." (".$gettime.")\n";
+print $main::config_haruca{'delim'}.$loggetcmd." ".$hostname." (".$gettime.")\n";
 
 exit;
 

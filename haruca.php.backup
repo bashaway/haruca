@@ -37,8 +37,10 @@ if( isset($_REQUEST['funcs']) && (($_REQUEST['funcs'] !== "tool_configchanger_ex
 
 $date = db_fetch_cell("select now() as today");
 
-set_default_action('show');
+#set_default_action('show');
+set_default_action();
 general_header();
+#top_header();
 
 $_SESSION['sess_nav_level_cache'] = '';
 

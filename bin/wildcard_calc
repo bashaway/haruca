@@ -15,7 +15,7 @@ if(($ARGV[0] eq "")||($ARGV[1] eq "")){
 $address1 = $ARGV[0];
 $address2 = $ARGV[1];
 
-$result = `${main::binpath}ipcalc.pl $address1 - $address2`;
+$result = `${main::config_haruca{'binpath'}}ipcalc.pl $address1 - $address2`;
 $buf_adrs = $buf_mask = $buf = "";
 foreach $line (split(/\n/,$result)){
   if($line =~ /deaggregate/){ next; }

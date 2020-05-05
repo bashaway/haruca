@@ -1,6 +1,16 @@
 #!/usr/bin/perl
 
+use strict;
 use haruca;
+
+my ($buf ,$delimit ,$ind_acl ,$ind_interface ,$ind_ip ,$ind_media ,$ind_mode ,$ind_ospf ,$ind_sp ,$ind_status ,$ind_vlan ,$item ,$key ,$num ,$period ,$total_length ,$var_name);
+my (@periods ,@items ,@keys ,@octs ,@tmps ,@configs);
+my( $L1_max ,$L2_max ,$acl_in_max ,$acl_out_max ,$adrs_max ,$adrs_str ,$conf ,$descr_max ,$flg_csv ,$flg_ip_short ,$hsrp_group_max ,$hsrp_ip_max ,$hsrp_pri_max ,$if_max ,$mask_bin_max ,$mode_bw_max ,$mode_dp_max ,$mode_sp_max ,$ospf_cost_max ,$ospf_pri_max ,$result ,$st_dp_max ,$st_sp_max ,$st_status_max ,$st_type_max ,$st_vlan_max);
+my(%acl_in ,%acl_out ,%adrs ,%config ,%hsrp_group ,%hsrp_ip ,%hsrp_pri ,%mask_bin ,%mask_dec ,%mode_bw ,%mode_dp ,%mode_sp ,%ospf_cost ,%ospf_pri);
+my($L1_str ,$L2_str ,$host ,$key_config ,$key_status ,$line ,$show_int_stat ,$show_inter);
+my(%L1 ,%L2 ,%dscr ,%st_dp ,%st_sp ,%st_status ,%st_type ,%st_vlan);
+my( @keys_config ,@keys_status ,@lines ,@results ,@statuses);
+
 
 if( $ARGV[0] eq "" ){
   print "usage : portlist router-name [csv|line]\n";
@@ -63,9 +73,9 @@ push(@items,"st_type");
 ##########################################
 # show interface status
 ##########################################
-$buf = `${main::binpath}router $host show interface status , show interfaces `;
+$buf = `${main::config_haruca{'binpath'}}router $host show interface status , show interfaces `;
 
-@results = split(/${main::delim_line}/,$buf);
+@results = split(/$main::config_haruca{'delim_line'}\n/,$buf);
 
 $show_int_stat = $results[2];
 $show_inter    = $results[4];
@@ -98,7 +108,7 @@ foreach(@statuses){
 ##########################################
 # show startup-config
 ##########################################
-$buf = `${main::binpath}router $host sh run | fmt_inter_config `;
+$buf = `${main::config_haruca{'binpath'}}router $host sh run | fmt_inter_config `;
 @configs = split(/\n/,$buf);
 shift(@configs);
 
@@ -215,7 +225,7 @@ foreach $result (@results){
     $mode_bw{$key} = $mode_bw{$key} . " Mbps";
   }
 
-  $if{$key} = $key;
+  #$if{$key} = $key;
 
 }
 

@@ -69,40 +69,40 @@ foreach $host (@hosts){
   }
 
   if(!haruca::pingcheck_rapid($host)){
-    print $host.$main::delim.$main::delim.$main::delim."\n";
+    print $host.$main::config_haruca{'delim'}.$main::config_haruca{'delim'}.$main::config_haruca{'delim'}."\n";
     next;
   }
 
   print $host;
 
   if($str1){
-    $res1 = `${main::snmpwalkpath} $cmd_opt -v $snmp_vers -c $com_str $adrs $str1 2> /dev/null`;
+    $res1 = `${main::config_haruca{'snmpwalkpath'}} $cmd_opt -v $snmp_vers -c $com_str $adrs $str1 2> /dev/null`;
     chomp($res1);
     if($res1 =~ /^no such/i){
-      print $main::delim;
+      print $main::config_haruca{'delim'};
     }else{
-      print $main::delim.$res1;
+      print $main::config_haruca{'delim'}.$res1;
     }
   }
 
 
   if($str2){
-    $res2 = `${main::snmpwalkpath} $cmd_opt -v $snmp_vers -c $com_str $adrs $str2 2> /dev/null`;
+    $res2 = `${main::config_haruca{'snmpwalkpath'}} $cmd_opt -v $snmp_vers -c $com_str $adrs $str2 2> /dev/null`;
     chomp($res2);
     if($res2 =~ /^no such/i){
-      print $main::delim;
+      print $main::config_haruca{'delim'};
     }else{
-      print $main::delim.$res2;
+      print $main::config_haruca{'delim'}.$res2;
     }
   }
 
   if($str3){
-    $res3 = `${main::snmpwalkpath} $cmd_opt -v $snmp_vers -c $com_str $adrs $str3 2> /dev/null`;
+    $res3 = `${main::config_haruca{'snmpwalkpath'}} $cmd_opt -v $snmp_vers -c $com_str $adrs $str3 2> /dev/null`;
     chomp($res3);
     if($res3 =~ /^no such/i){
-      print $main::delim;
+      print $main::config_haruca{'delim'};
     }else{
-      print $main::delim.$res3;
+      print $main::config_haruca{'delim'}.$res3;
     }
   }
 

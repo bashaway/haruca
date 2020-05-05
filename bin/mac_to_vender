@@ -7,7 +7,7 @@ my ($mac,$name);
 my %oui;
 my @oui_dats;
 
-open(FILE, "${main::binpath}oui.txt") or die;
+open(FILE, "${main::config_haruca{'binpath'}}oui.txt") or die;
 @oui_dats = <FILE>;
 close(FILE);
 
