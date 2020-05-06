@@ -5,17 +5,17 @@ function plugin_haruca_install($upgrade = 0) {
   include_once($config["base_path"] . "/plugins/haruca/haruca_functions.php");
 
    $plugin = 'haruca';
+
    api_plugin_register_hook($plugin, 'page_head',             'haruca_page_head',            'setup.php');
    api_plugin_register_hook($plugin, 'top_header_tabs',       'haruca_show_tab',             "setup.php");
    api_plugin_register_hook($plugin, 'top_graph_header_tabs', 'haruca_show_tab',             "setup.php");
 
    api_plugin_register_hook($plugin, 'config_arrays',         'haruca_config_arrays',        "setup.php");
    api_plugin_register_hook($plugin, 'draw_navigation_text',  'haruca_draw_navigation_text', "setup.php");
-   api_plugin_register_hook($plugin, 'config_insert',         'haruca_config_insert', 'settings.php');
+   api_plugin_register_hook($plugin, 'config_insert',         'haruca_config_insert',        'setup.php');
 
    api_plugin_register_hook($plugin, 'config_settings',       'haruca_config_settings',      "setup.php");
    api_plugin_register_hook($plugin, 'config_form',           'haruca_config_form',          "setup.php");
-
 
    api_plugin_register_realm($plugin, 'haruca_show.php,haruca_tool.php,haruca_manual.php', 'Plugin -> haruca viewer', 1);
    api_plugin_register_realm($plugin, 'haruca_manage.php', 'Plugin -> haruca configure', 1);
@@ -158,45 +158,13 @@ function haruca_show_tab () {
 
 
 function haruca_page_head() {
-    global $config;
-
-    print "<!-- DEBUG : haruca_page_head begin-->\n";
-    if(0){
-    if (file_exists($config['base_path'] . '/plugins/haruca/themes/' . get_selected_theme() . '/main.css')) {
-        print "<link href='" . $config['url_path'] . 'plugins/haruca/themes/' . get_selected_theme() . "/main.css' type='text/css' rel='stylesheet'>\n";
-    }
-
-    ?>
-    <script type='text/javascript'>
-    $(function() {
-        $(document).ajaxComplete(function() {
-            $('.tholdVRule').unbind().click(function(event) {
-                event.preventDefault();
-
-                href = $(this).attr('href');
-                href += '&header=false';
-
-                $.get(href, function(data) {
-                    $('#main').empty().hide();
-                    $('div[class^="ui-"]').remove();
-                    $('#main').html(data);
-                    applySkin();
-                });
-            });
-        });
-    });
-    </script>
-    <?php
-    }
-    print "<!-- DEBUG : haruca_page_head end-->\n";
 }
 
 
 function plugin_haruca_uninstall () {
   // Remove items from the settings table
-  db_execute('DELETE FROM settings WHERE name LIKE "%haruca%"');
-  plugin_haruca_drop_table ();
-
+  #db_execute('DELETE FROM settings WHERE name LIKE "%haruca%"');
+  #plugin_haruca_drop_table ();
 }
 
 
@@ -424,10 +392,7 @@ function plugin_haruca_setup_table_new () {
 
 
 function haruca_config_arrays () {
-  global $menu, $config,$haruca_fontsize;
-  #print "<!-- DEBUG : haruca_config_arrays begin-->\n";
-  include_once($config["base_path"] . "/plugins/haruca/haruca_functions.php");
-
+  global $haruca_fontsize;
   $haruca_fontsize = array(
     6 => __('Small  (%d pt)',  6, 'haruca'),
     8 => __('Medium (%d pt)',  8, 'haruca'),
