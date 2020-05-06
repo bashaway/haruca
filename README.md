@@ -45,8 +45,6 @@ windows版cactiでは動作不可です。~
 
 
 ## require
-zip
-perl
 
 
 
@@ -62,3 +60,10 @@ perl
 - 開発はciscoIOSのエミュレーション環境を利用しているため、実機とは異なる可能性があります。
 
 
+## install
+```
+dnf -y install dnf-plugin-config-manager gcc zip
+dnf config-manager --set-enable PowerTools
+dnf -y install perl-CPAN perl-YAML perl-DBI perl-DBD-MySQL 
+cpan -i IO::Pty IO::Tty Net::Telnet Net::SSH Net::SSH::Expect
+```
