@@ -65,7 +65,7 @@ windows版cactiでは動作不可です。~
 cd /usr/share/cacti/plugins
 git clone https://github.com/bashaway/haruca
 
-chown apache.apahce ./haruca/bin/conffile
+chown apache.apache ./haruca/bin/conffile
 
 dnf -y install dnf-plugin-config-manager gcc zip
 dnf config-manager --set-enable PowerTools
