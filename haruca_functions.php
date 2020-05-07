@@ -190,9 +190,8 @@ function page_default(){
     $buf .= "[user@cacti haruca]$ sudo ln -s /usr/share/cacti/plugins/haruca/bin/haruca.pm /usr/lib64/perl5/<BR>\n";
     $buf .= "<BR>\n";
     $buf .= "##### INSTALL require modules #####<BR>\n";
-    $buf .= "[user@cacti]$ sudo yum install perl-CPAN perl-YAML perl-DBI perl-DBD-MySQL perl-Net-Telnet perl-Net-SSH perl-Expect <BR>\n";
-    $buf .= "[user@cacti]$ sudo perl -MCPAN -e 'install Test::More' <BR>\n";
-    $buf .= "[user@cacti]$ sudo perl -MCPAN -e 'install Net::SSH::Expect' <BR>\n";
+    $buf .= "[user@cacti haruca]$ sudo dnf -y install gcc zip perl-CPAN perl-DBI<BR>\n";
+    $buf .= "[user@cacti haruca]$ cpan -i Net::SSH::Expect Net::Telnet<BR>\n";
     $ret = array('status' => 'NG' , 'msg' => $buf );
   }else{
     $buf .= "<center>\n";
