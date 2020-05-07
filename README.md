@@ -60,8 +60,13 @@ windows版cactiでは動作不可です。~
 - 開発はciscoIOSのエミュレーション環境を利用しているため、実機とは異なる可能性があります。
 
 
-## install
+## Clone , permission , software
 ```
+cd /usr/share/cacti/plugins
+git clone https://github.com/bashaway/haruca
+
+chown apache.apahce ./haruca/bin/conffile
+
 dnf -y install dnf-plugin-config-manager gcc zip
 dnf config-manager --set-enable PowerTools
 dnf -y install perl-CPAN perl-YAML perl-DBI perl-DBD-MySQL 
