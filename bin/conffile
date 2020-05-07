@@ -25,5 +25,5 @@ database_hostname = cacti_db
 database_username = cactiuser
 database_password = cactipwd
 database_port = 3306
-snmpwalkpath = /usr/bin/snmpwalk
-snmpgetpath = /usr/bin/snmpget
+snmpwalkpath = /bin/snmpwalk
+snmpgetpath = /bin/snmpget
