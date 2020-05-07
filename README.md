@@ -67,8 +67,8 @@ git clone https://github.com/bashaway/haruca
 
 chown apache.apache ./haruca/bin/conffile
 
-dnf -y install dnf-plugin-config-manager gcc zip
-dnf config-manager --set-enable PowerTools
-dnf -y install perl-CPAN perl-YAML perl-DBI perl-DBD-MySQL 
-cpan -i IO::Pty IO::Tty Net::Telnet Net::SSH Net::SSH::Expect
+
+dnf -y install gcc zip perl-CPAN perl-DBI
+cpan -i Net::SSH::Expect
+cpan -i Net::Telnet
 ```
