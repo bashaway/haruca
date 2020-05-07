@@ -1,10 +1,17 @@
 #!/usr/bin/perl
 
+use DBI;
+use Encode;
 use haruca;
-use strict;
+use Net::SMTP;
 use Net::SSH::Expect;
 use Net::Telnet;
-use DBI;
+use strict;
+use threads;
+use Thread::Semaphore;
+use threads::shared;
+
+
 
 print haruca::pmcheck();
 
