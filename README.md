@@ -69,6 +69,5 @@ chown apache.apache ./haruca/bin/conffile
 
 
 dnf -y install gcc zip perl-CPAN perl-DBI
-cpan -i Net::SSH::Expect
-cpan -i Net::Telnet
+cpan -i Net::SSH::Expect Net::Telnet
 ```
