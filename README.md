@@ -67,7 +67,6 @@ git clone https://github.com/bashaway/haruca
 
 chown apache.apache ./haruca/bin/conffile
 
-
 dnf -y install gcc zip perl-CPAN perl-DBI
 cpan -i Net::SSH::Expect Net::Telnet
 ```
