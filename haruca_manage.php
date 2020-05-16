@@ -68,6 +68,7 @@ bottom_footer();
 ############################3
 function manage_host(){
   global $config_haruca;
+
   foreach($_REQUEST as $key => $value){
     if($value === "get"){
       $cmd = "{$config_haruca['perlpath']}  {$config_haruca['binpath']}/sys_get_cisco_info {$key}";
@@ -78,14 +79,6 @@ function manage_host(){
 
 
   if(isset($_REQUEST['type']) && ($_REQUEST['type'] === "update")){
-    #print "UPDATE<BR>\n";
-
-    #$sql  = "select id,categorycode ,officecode from plugin_haruca_host";
-    #while($row = db_fetch_assoc($sql)){
-
-    #$ids = db_fetch_assoc($sql);
-    #if(!empty($ids)){
-    #  foreach($ids as $id) {
 
     $sql  = "select id,categorycode ,officecode from plugin_haruca_host";
     #$result = mysql_query($sql) or die (mysql_error());
@@ -95,11 +88,13 @@ function manage_host(){
       $codes[$row['id']]['officecode'] = $row['officecode'];
     }
 
+
     foreach($_REQUEST as $key => $value){
       if(preg_match("/:/",$key)){
         $codes_new = explode(":",$key);
         $str_code = $codes_new[0];
         $id = $codes_new[1];
+
         if($codes[$id][$str_code] != $value){
           if(isset($args[$codes_new[1]])){
             $args[$codes_new[1]] .= " --".$codes_new[0]."=".$value;

@@ -60,13 +60,15 @@ windows版cactiでは動作不可です。~
 - 開発はciscoIOSのエミュレーション環境を利用しているため、実機とは異なる可能性があります。
 
 
-## Clone , permission , software
+## Installation
 ```
-cd /usr/share/cacti/plugins
-git clone https://github.com/bashaway/haruca
+$ cd /usr/share/cacti/plugins
+$ git clone https://github.com/bashaway/haruca
 
-chown apache.apache ./haruca/bin/conffile
+$ chown apache.apache ./haruca/bin/conffile
 
-dnf -y install gcc zip perl-CPAN perl-DBI
-cpan -i Net::SSH::Expect Net::Telnet
+$ sudo dnf -y install gcc zip perl-CPAN perl-DBI perl-DBD-MySQL
+$ sudo cpan -i Net::SSH::Expect Net::Telnet
 ```
+
+<!-- git add -A ; git commit -m "COMIT COMMENT" ;  git push -u origin master -->

@@ -8,8 +8,7 @@ global $config_haruca;
 
 # 読み込まれるたびにharuca用のDBを最新化しとかないとまずいのです
 # cacti側でデバイスを追加しただけでは、harucaのhostテーブルにhost_idとかがないので、不整合になる。
-exec("{$config_haruca['perlpath']} ./plugins/haruca/bin/sys_regist_host.pl ");
-
+exec("{$config_haruca['perlpath']} {$config_haruca['binpath']}/sys_regist_host.pl ");
 
 # 別窓でコンフィグを表示させる
 if(isset($_REQUEST['action']) && ($_REQUEST['action'] === "show_logs_execute")){
@@ -33,6 +32,7 @@ if($ret['status'] != "OK"){
 
 
 haruca_tabs();
+
 
 switch(get_request_var('action')) {
   case "show_statuscheck":
