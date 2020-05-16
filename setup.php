@@ -164,6 +164,7 @@ function haruca_page_head() {
 function plugin_haruca_uninstall () {
   // Remove items from the settings table
   db_execute('DELETE FROM settings WHERE name LIKE "%haruca%"');
+  db_execute('DELETE FROM settings_user WHERE name LIKE "%haruca%"');
   plugin_haruca_drop_table ();
 }
 
