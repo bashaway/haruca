@@ -4,6 +4,16 @@ function plugin_haruca_install($upgrade = 0) {
   global $config;
   include_once($config["base_path"] . "/plugins/haruca/haruca_functions.php");
 
+  $str_error = "Please read README.md (installation chapter) and install perl modules.";
+    if( exec("perl {$config["base_path"]}/plugins/haruca/bin/pmcheck.pl ") == "OK" ){
+    } else {
+      raise_message('rrdcalendar_info', __($str_error, 'rrdcalendar'), MESSAGE_LEVEL_ERROR);
+      header('Location:' . $config['url_path'] . 'plugins.php?header=false');
+    exit;
+  }
+
+
+
    $plugin = 'haruca';
 
    api_plugin_register_hook($plugin, 'page_head',             'haruca_page_head',            'setup.php');
@@ -449,7 +459,7 @@ function haruca_draw_navigation_text ($nav) {
 
    $nav['haruca_manual.php:']                    = array('title' => __('Haruca manual'   , 'haruca'), 'mapping' => ''           , 'url' => 'haruca_manual.php', 'level' => '0');
    $nav['haruca_manual.php:manual']              = array('title' => __('Haruca manual'   , 'haruca'), 'mapping' => ''           , 'url' => 'haruca_manual.php', 'level' => '0');
-   $nav['haruca_manual.php:manual_setup']               = array('title' => __('Setup'           , 'haruca'), 'mapping' => 'haruca_manual.php:', 'url' => '', 'level' => '1');
+   $nav['haruca_manual.php:manual_readme']               = array('title' => __('README.md'           , 'haruca'), 'mapping' => 'haruca_manual.php:', 'url' => '', 'level' => '1');
    $nav['haruca_manual.php:manual_command']             = array('title' => __('CLI command'     , 'haruca'), 'mapping' => 'haruca_manual.php:', 'url' => '', 'level' => '1');
 
    return $nav;

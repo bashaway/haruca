@@ -86,7 +86,7 @@ $tabs_manage = array(
 );
 
 $tabs_manual = array(
-  'manual_setup' => __('SetUp', 'haruca'),
+  'manual_readme' => __('README.md', 'haruca'),
   'manual_command' => __('Cmd', 'haruca'),
 );
 

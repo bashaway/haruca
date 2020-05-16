@@ -20,8 +20,8 @@ if($ret['status'] != "OK"){
 haruca_tabs();
 
 switch(get_request_var('action')) {
-    case "manual_setup":
-      manual_setup();
+    case "manual_readme":
+      manual_readme();
       break;
     case "manual_command":
       manual_command();
@@ -37,24 +37,30 @@ bottom_footer();
 
 
 ########################################################
-# manual setup
+# manual readme
 ########################################################
-function manual_setup(){
+function manual_readme(){
   global $config_haruca;
 ?>
             <center>
-              <H3>Initialize Setup</H3>
+              <H3>README.md</H3>
               <HR>
             </center>
             <table width="100%">
               <tr>
                 <td>
-                  <PRE>
+<script src="./docs/marked.min.js"></script>
+<div id="mdrender"></div>
+<div id="mdraw" style="display:none;">
+
 <?php
-  $buf = file_get_contents($config_haruca['basepath']."/docs/setup");
+  $buf = file_get_contents($config_haruca['basepath']."/README.md");
   print $buf;
 ?>
-                  </PRE>
+</div>
+  <script>
+    document.getElementById("mdrender").innerHTML = marked(document.getElementById("mdraw").innerHTML);
+  </script>
                 </td>
               </tr>
             </table>

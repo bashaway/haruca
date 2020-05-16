@@ -61,14 +61,68 @@ windows版cactiでは動作不可です。~
 
 
 ## Installation
+
 ```
+// require packages
+$ sudo dnf -y install gcc zip perl-CPAN perl-DBI perl-DBD-MySQL
+$ sudo cpan -i Net::SSH::Expect Net::Telnet
+
+// git clone from repository
 $ cd /usr/share/cacti/plugins
 $ git clone https://github.com/bashaway/haruca
 
-$ chown apache.apache ./haruca/bin/conffile
+// config file permission
+$ sudo chown apache.apache ./haruca/bin/conffile
 
-$ sudo dnf -y install gcc zip perl-CPAN perl-DBI perl-DBD-MySQL
-$ sudo cpan -i Net::SSH::Expect Net::Telnet
+// CHECK perl @INC DIRECTORY
+$ perl -E 'say for @INC'
+/usr/local/lib64/perl5
+/usr/local/share/perl5
+/usr/lib64/perl5/vendor_perl
+/usr/share/perl5/vendor_perl
+/usr/lib64/perl5
+/usr/share/perl5
+
+// SET symbolic link haruca.pm TO perl @INC DIRECTORY
+$ sudo ln -s /usr/share/cacti/plugins/haruca/bin/haruca.pm /usr/lib64/perl5/
+
+// Download Vendor Code 
+$ wget http://standards.ieee.org/develop/regauth/oui/oui.txt -O /usr/share/cacti/plugins/haruca/bin/oui.txt
+
+// Download ipcalc.pl
+$ wget http://jodies.de/ipcalc-archive/ipcalc-0.41/ipcalc -O /usr/share/cacti/plugins/haruca/bin/ipcalc.pl
+
+// Download marked.js
+$ wget https://cdn.rawgit.com/chjj/marked/master/marked.min.js -O /usr/share/cacti/plugins/haruca/docs/marked.min.js
 ```
+
+## setup crontab
+```
+// SETUP CRON (EXAMPLE FOR PING TIME 5MIN.) 
+$ sudo vi /etc/cron.d/cacti
+0   0 * * * apache /usr/bin/perl  /usr/share/cacti/plugins/haruca/bin/sys_daily_report.pl > /dev/null 2>&1
+*/5 * * * * apache /usr/bin/perl  /usr/share/cacti/plugins/haruca/bin/sys_get_rtt.pl      > /dev/null 2>&1
+
+or
+
+$ sudo crontab -e
+0   0 * * * perl  /usr/share/cacti/plugins/haruca/bin/sys_daily_report.pl > /dev/null 2>&1
+*/5 * * * * perl  /usr/share/cacti/plugins/haruca/bin/sys_get_rtt.pl      > /dev/null 2>&1
+```
+
+## (optional) snmptrap settings 
+
+```
+// MODIFY snmptrapd.conf
+$ sudo vi /etc/snmp/snmptrapd.conf
+authCommunity execute public
+traphandle default /YOUR/CACTI/DIRECTORY/plugins/haruca/bin/sys_trapreceiver
+snmpTrapdAddr udp:XXXX     <- trap receive port (default:161)
+
+// MODIFY SNMPTRAPD START SCRIPT
+$ sudo systemctl snmptrapd enable
+$ sudo systemctl snmptrapd start
+```
+
 
 <!-- git add -A ; git commit -m "COMIT COMMENT" ;  git push -u origin master -->
