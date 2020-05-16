@@ -4,8 +4,8 @@ function plugin_haruca_install($upgrade = 0) {
   global $config;
   include_once($config["base_path"] . "/plugins/haruca/haruca_functions.php");
 
-  $str_error = "Please read README.md (installation chapter) and install perl modules.";
-    if( exec("perl {$config["base_path"]}/plugins/haruca/bin/pmcheck.pl ") == "OK" ){
+  $str_error = "Please read <b><a href=https://github.com/bashaway/haruca#installation target=_blank>README.md</a></b> (installation chapter) and install perl modules.";
+    if( ! exec("perl {$config["base_path"]}/plugins/haruca/bin/pmcheck.pl ") == "OK" ){
     } else {
       raise_message('rrdcalendar_info', __($str_error, 'rrdcalendar'), MESSAGE_LEVEL_ERROR);
       header('Location:' . $config['url_path'] . 'plugins.php?header=false');
