@@ -4,35 +4,33 @@ function plugin_haruca_install($upgrade = 0) {
   global $config;
   include_once($config["base_path"] . "/plugins/haruca/haruca_functions.php");
 
-  $str_error = "Please read <b><a href=https://github.com/bashaway/haruca#installation target=_blank>README.md</a></b> (installation chapter) and install perl modules.";
-    if( ! exec("perl {$config["base_path"]}/plugins/haruca/bin/pmcheck.pl ") == "OK" ){
-    } else {
-      raise_message('rrdcalendar_info', __($str_error, 'rrdcalendar'), MESSAGE_LEVEL_ERROR);
-      header('Location:' . $config['url_path'] . 'plugins.php?header=false');
+  // perl module check
+  $str_error = "Perl module or config file permission check failed.<BR>Please read <b><a href=https://github.com/bashaway/haruca#installation target=_blank>README.md</a></b> (installation chapter)";
+  if( ! (exec("perl {$config["base_path"]}/plugins/haruca/bin/pmcheck.pl ") == "OK" && is_writable("{$config["base_path"]}/plugins/haruca/bin/conffile")) ) {
+    raise_message('rrdcalendar_info', __($str_error, 'rrdcalendar'), MESSAGE_LEVEL_ERROR);
+    header('Location:' . $config['url_path'] . 'plugins.php?header=false');
     exit;
   }
 
+  $plugin = 'haruca';
 
+  api_plugin_register_hook($plugin, 'page_head',             'haruca_page_head',            'setup.php');
+  api_plugin_register_hook($plugin, 'top_header_tabs',       'haruca_show_tab',             "setup.php");
+  api_plugin_register_hook($plugin, 'top_graph_header_tabs', 'haruca_show_tab',             "setup.php");
 
-   $plugin = 'haruca';
+  api_plugin_register_hook($plugin, 'config_arrays',         'haruca_config_arrays',        "setup.php");
+  api_plugin_register_hook($plugin, 'draw_navigation_text',  'haruca_draw_navigation_text', "setup.php");
+  api_plugin_register_hook($plugin, 'config_insert',         'haruca_config_insert',        'setup.php');
 
-   api_plugin_register_hook($plugin, 'page_head',             'haruca_page_head',            'setup.php');
-   api_plugin_register_hook($plugin, 'top_header_tabs',       'haruca_show_tab',             "setup.php");
-   api_plugin_register_hook($plugin, 'top_graph_header_tabs', 'haruca_show_tab',             "setup.php");
+  api_plugin_register_hook($plugin, 'config_settings',       'haruca_config_settings',      "setup.php");
+  api_plugin_register_hook($plugin, 'config_form',           'haruca_config_form',          "setup.php");
 
-   api_plugin_register_hook($plugin, 'config_arrays',         'haruca_config_arrays',        "setup.php");
-   api_plugin_register_hook($plugin, 'draw_navigation_text',  'haruca_draw_navigation_text', "setup.php");
-   api_plugin_register_hook($plugin, 'config_insert',         'haruca_config_insert',        'setup.php');
+  api_plugin_register_realm($plugin, 'haruca_show.php,haruca_tool.php,haruca_manual.php', 'Plugin -> haruca viewer', 1);
+  api_plugin_register_realm($plugin, 'haruca_manage.php', 'Plugin -> haruca configure', 1);
 
-   api_plugin_register_hook($plugin, 'config_settings',       'haruca_config_settings',      "setup.php");
-   api_plugin_register_hook($plugin, 'config_form',           'haruca_config_form',          "setup.php");
+  plugin_haruca_setup_table_new ();
 
-   api_plugin_register_realm($plugin, 'haruca_show.php,haruca_tool.php,haruca_manual.php', 'Plugin -> haruca viewer', 1);
-   api_plugin_register_realm($plugin, 'haruca_manage.php', 'Plugin -> haruca configure', 1);
-
-   plugin_haruca_setup_table_new ();
-
-   plugin_haruca_setup_dbinfo();
+  plugin_haruca_setup_dbinfo();
 
 }
 
