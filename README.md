@@ -63,16 +63,9 @@ windows版cactiでは動作不可です。~
 ## Installation
 
 ```
-// require packages
-$ sudo dnf -y install gcc zip perl-CPAN perl-DBI perl-DBD-MySQL
-$ sudo cpan -i Net::SSH::Expect Net::Telnet
-
 // git clone from repository
 $ cd /usr/share/cacti/plugins
 $ git clone https://github.com/bashaway/haruca
-
-// config file permission
-$ sudo chown apache.apache ./haruca/bin/conffile
 
 // CHECK perl @INC DIRECTORY
 $ perl -E 'say for @INC'
@@ -85,6 +78,13 @@ $ perl -E 'say for @INC'
 
 // SET symbolic link haruca.pm TO perl @INC DIRECTORY
 $ sudo ln -s /usr/share/cacti/plugins/haruca/bin/haruca.pm /usr/lib64/perl5/
+
+// install require packages
+$ sudo dnf -y install gcc zip perl-CPAN perl-DBI perl-DBD-MySQL
+$ sudo cpan -i Net::SSH::Expect Net::Telnet
+
+// modify config file permission
+$ sudo chown apache.apache ./haruca/bin/conffile
 
 // Download Vendor Code 
 $ wget http://standards.ieee.org/develop/regauth/oui/oui.txt -O /usr/share/cacti/plugins/haruca/bin/oui.txt
